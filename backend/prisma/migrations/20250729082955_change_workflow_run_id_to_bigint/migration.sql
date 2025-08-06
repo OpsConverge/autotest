@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Build" ALTER COLUMN "workflowRunId" SET DATA TYPE BIGINT;
