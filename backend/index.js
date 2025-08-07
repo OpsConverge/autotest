@@ -2260,7 +2260,7 @@ app.post('/api/teams/:teamId/parse-test-results', requireAuth, requireTeamMember
                 
                 await prisma.testRun.create({
                   data: {
-                    buildId,
+                    buildId: Number(buildId),
                     testSuite: testSuite,
                     testType: 'unknown',
                     status: 'failed',
@@ -3958,6 +3958,461 @@ app.post('/api/teams/:teamId/reparse-all-tests', requireAuth, requireTeamMember,
   } catch (error) {
     console.error('Error in bulk re-parse:', error);
     res.status(500).json({ error: 'Failed to re-parse all tests' });
+  }
+});
+
+// Scheduled Tests API endpoints
+app.get('/api/teams/:teamId/scheduled-tests', requireAuth, requireTeamMember, async (req, res) => {
+  const { teamId } = req.params;
+  const { sortBy = '-createdAt', limit = 50 } = req.query;
+  
+  console.log(`Fetching scheduled tests for team ${teamId}, sortBy: ${sortBy}, limit: ${limit}`);
+  
+  try {
+    // Parse sortBy parameter
+    let orderBy = { createdAt: 'desc' };
+    if (sortBy.startsWith('-')) {
+      const field = sortBy.substring(1);
+      // Map field names to actual Prisma field names
+      const fieldMapping = {
+        'created_date': 'createdAt',
+        'createdAt': 'createdAt',
+        'id': 'id',
+        'name': 'name',
+        'test_type': 'test_type',
+        'is_active': 'is_active',
+        'last_run_status': 'last_run_status'
+      };
+      const mappedField = fieldMapping[field] || 'createdAt';
+      orderBy = { [mappedField]: 'desc' };
+    } else {
+      const fieldMapping = {
+        'created_date': 'createdAt',
+        'createdAt': 'createdAt',
+        'id': 'id',
+        'name': 'name',
+        'test_type': 'test_type',
+        'is_active': 'is_active',
+        'last_run_status': 'last_run_status'
+      };
+      const mappedField = fieldMapping[sortBy] || 'createdAt';
+      orderBy = { [mappedField]: 'asc' };
+    }
+    
+    console.log('OrderBy:', orderBy);
+    
+    const scheduledTests = await prisma.scheduledTest.findMany({
+      where: { teamId: Number(teamId) },
+      orderBy: orderBy,
+      take: Number(limit)
+    });
+    
+    console.log(`Found ${scheduledTests.length} scheduled tests`);
+    
+    res.json(convertBigInts(scheduledTests));
+  } catch (err) {
+    console.error('Error fetching scheduled tests:', err);
+    console.error('Error details:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to list scheduled tests', details: err.message });
+  }
+});
+
+app.get('/api/teams/:teamId/scheduled-tests/:id', requireAuth, requireTeamMember, async (req, res) => {
+  const { teamId, id } = req.params;
+  
+  try {
+    const scheduledTest = await prisma.scheduledTest.findFirst({
+      where: { 
+        id: Number(id),
+        teamId: Number(teamId)
+      }
+    });
+    
+    if (!scheduledTest) {
+      return res.status(404).json({ error: 'Scheduled test not found' });
+    }
+    
+    res.json(convertBigInts(scheduledTest));
+  } catch (err) {
+    console.error('Error fetching scheduled test:', err);
+    res.status(500).json({ error: 'Failed to get scheduled test' });
+  }
+});
+
+app.post('/api/teams/:teamId/scheduled-tests', requireAuth, requireTeamMember, async (req, res) => {
+  const { teamId } = req.params;
+  const testData = req.body;
+  
+  console.log(`Creating scheduled test for team ${teamId}:`, testData);
+  
+  try {
+    const scheduledTest = await prisma.scheduledTest.create({
+      data: {
+        ...testData,
+        teamId: Number(teamId),
+        last_run_status: 'never_run',
+        is_active: testData.is_active !== undefined ? testData.is_active : true
+      }
+    });
+    
+    console.log('Created scheduled test:', scheduledTest);
+    
+    res.status(201).json(convertBigInts(scheduledTest));
+  } catch (err) {
+    console.error('Error creating scheduled test:', err);
+    console.error('Error details:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to create scheduled test', details: err.message });
+  }
+});
+
+app.put('/api/teams/:teamId/scheduled-tests/:id', requireAuth, requireTeamMember, async (req, res) => {
+  const { teamId, id } = req.params;
+  const updateData = req.body;
+  
+  try {
+    const scheduledTest = await prisma.scheduledTest.update({
+      where: { 
+        id: Number(id),
+        teamId: Number(teamId)
+      },
+      data: updateData
+    });
+    
+    res.json(convertBigInts(scheduledTest));
+  } catch (err) {
+    console.error('Error updating scheduled test:', err);
+    res.status(500).json({ error: 'Failed to update scheduled test' });
+  }
+});
+
+app.delete('/api/teams/:teamId/scheduled-tests/:id', requireAuth, requireTeamMember, async (req, res) => {
+  const { teamId, id } = req.params;
+  
+  try {
+    await prisma.scheduledTest.delete({
+      where: { 
+        id: Number(id),
+        teamId: Number(teamId)
+      }
+    });
+    
+    res.json({ message: 'Scheduled test deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting scheduled test:', err);
+    res.status(500).json({ error: 'Failed to delete scheduled test' });
+  }
+});
+
+app.post('/api/teams/:teamId/scheduled-tests/:id/run', requireAuth, requireTeamMember, async (req, res) => {
+  const { teamId, id } = req.params;
+  
+  try {
+    const scheduledTest = await prisma.scheduledTest.findFirst({
+      where: { 
+        id: Number(id),
+        teamId: Number(teamId)
+      }
+    });
+    
+    if (!scheduledTest) {
+      return res.status(404).json({ error: 'Scheduled test not found' });
+    }
+    
+    // Update status to running
+    await prisma.scheduledTest.update({
+      where: { id: Number(id) },
+      data: {
+        last_run_status: 'running',
+        last_run_time: new Date().toISOString()
+      }
+    });
+    
+    // Get GitHub token for the team
+    const githubToken = await getGithubTokenForTeam(teamId);
+    if (!githubToken) {
+      return res.status(401).json({ error: 'GitHub token not found for this team' });
+    }
+    
+    // Extract owner and repo from the full name
+    const [owner, repo] = scheduledTest.github_repo_full_name.split('/');
+    if (!owner || !repo) {
+      return res.status(400).json({ error: 'Invalid repository format' });
+    }
+    
+    console.log(`Triggering workflow for ${owner}/${repo}, workflow: ${scheduledTest.workflow_file_name}`);
+    console.log(`Scheduled test data:`, {
+      id: scheduledTest.id,
+      name: scheduledTest.name,
+      workflow_file_name: scheduledTest.workflow_file_name,
+      github_repo_full_name: scheduledTest.github_repo_full_name
+    });
+    
+    // Get the workflow ID by fetching workflows and finding the matching one
+    const workflowsResponse = await axios.get(`https://api.github.com/repos/${owner}/${repo}/actions/workflows`, {
+      headers: { Authorization: `token ${githubToken}` }
+    });
+    
+    console.log('Available workflows:', workflowsResponse.data.workflows.map(w => ({ id: w.id, name: w.name, path: w.path })));
+    
+    const workflows = workflowsResponse.data.workflows;
+    const targetWorkflow = workflows.find(w => w.path === scheduledTest.workflow_file_name);
+    
+    // If exact match not found, try alternative matching
+    let targetWorkflowFinal = targetWorkflow;
+    if (!targetWorkflow) {
+      console.log('Exact path match not found, trying alternative matching...');
+      console.log('Looking for:', scheduledTest.workflow_file_name);
+      
+      // Try matching by filename only
+      const fileName = scheduledTest.workflow_file_name.split('/').pop();
+      targetWorkflowFinal = workflows.find(w => w.path.endsWith(fileName));
+      
+      if (targetWorkflowFinal) {
+        console.log(`Found workflow by filename match: ${targetWorkflowFinal.path}`);
+      } else {
+        // Try case-insensitive matching
+        targetWorkflowFinal = workflows.find(w => 
+          w.path.toLowerCase() === scheduledTest.workflow_file_name.toLowerCase()
+        );
+        
+        if (targetWorkflowFinal) {
+          console.log(`Found workflow by case-insensitive match: ${targetWorkflowFinal.path}`);
+        }
+      }
+    }
+    
+    if (!targetWorkflowFinal) {
+      console.error(`Workflow not found: ${scheduledTest.workflow_file_name}`);
+      console.error('Available workflows:', workflows.map(w => w.path));
+      // Update status to failed
+      await prisma.scheduledTest.update({
+        where: { id: Number(id) },
+        data: {
+          last_run_status: 'failed',
+          last_run_time: new Date().toISOString()
+        }
+      });
+      return res.status(404).json({ error: `Workflow not found: ${scheduledTest.workflow_file_name}` });
+    }
+    
+    console.log(`Found target workflow: ${targetWorkflowFinal.name} (ID: ${targetWorkflowFinal.id}, Path: ${targetWorkflowFinal.path})`);
+    
+    // Get the default branch for the repository
+    let defaultBranch = 'main';
+    try {
+      const repoResponse = await axios.get(`https://api.github.com/repos/${owner}/${repo}`, {
+        headers: { Authorization: `token ${githubToken}` }
+      });
+      defaultBranch = repoResponse.data.default_branch;
+      console.log(`Repository default branch: ${defaultBranch}`);
+    } catch (branchErr) {
+      console.log(`Could not get default branch, using 'main': ${branchErr.message}`);
+    }
+    
+    // Trigger the workflow
+    const triggerPayload = {
+      ref: defaultBranch,
+      inputs: {
+        triggered_by: 'test-scheduler',
+        scheduled_test_id: id.toString()
+      }
+    };
+    
+    console.log('Triggering workflow with payload:', triggerPayload);
+    console.log('Trigger URL:', `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${targetWorkflowFinal.id}/dispatches`);
+    
+    const triggerResponse = await axios.post(
+      `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${targetWorkflowFinal.id}/dispatches`,
+      triggerPayload,
+      {
+        headers: { 
+          Authorization: `token ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    console.log(`Workflow trigger response status: ${triggerResponse.status}`);
+    console.log(`Workflow trigger response data:`, triggerResponse.data);
+    console.log(`Workflow trigger response headers:`, triggerResponse.headers);
+    
+    // Check if the workflow was actually triggered
+    if (triggerResponse.status === 204) {
+      console.log(`Workflow triggered successfully: ${targetWorkflowFinal.name} (ID: ${targetWorkflowFinal.id})`);
+      
+      // Get the latest workflow run for this workflow
+      try {
+        // Add a small delay to ensure the workflow run is created
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const runsResponse = await axios.get(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${targetWorkflowFinal.id}/runs?per_page=1`, {
+          headers: { Authorization: `token ${githubToken}` }
+        });
+        
+        if (runsResponse.data.workflow_runs.length > 0) {
+          const latestRun = runsResponse.data.workflow_runs[0];
+          console.log(`Latest workflow run ID: ${latestRun.id}, status: ${latestRun.status}, conclusion: ${latestRun.conclusion}`);
+          
+          // Update the scheduled test with the workflow run ID
+          const updatedTest = await prisma.scheduledTest.update({
+            where: { id: Number(id) },
+            data: {
+              last_workflow_run_id: BigInt(latestRun.id),
+              last_run_status: latestRun.status === 'completed' ? latestRun.conclusion : latestRun.status,
+              last_run_time: new Date().toISOString()
+            }
+          });
+          
+          console.log('Updated scheduled test in database:', {
+            id: updatedTest.id,
+            last_run_status: updatedTest.last_run_status,
+            last_workflow_run_id: updatedTest.last_workflow_run_id,
+            last_run_time: updatedTest.last_run_time
+          });
+          
+          res.json({ 
+            message: 'Test run triggered successfully',
+            scheduledTestId: id,
+            workflowId: targetWorkflowFinal.id,
+            workflowName: targetWorkflowFinal.name,
+            workflowRunId: latestRun.id,
+            workflowStatus: latestRun.status,
+            repository: scheduledTest.github_repo_full_name
+          });
+        } else {
+          res.json({ 
+            message: 'Test run triggered successfully',
+            scheduledTestId: id,
+            workflowId: targetWorkflowFinal.id,
+            workflowName: targetWorkflowFinal.name,
+            repository: scheduledTest.github_repo_full_name
+          });
+        }
+      } catch (runsErr) {
+        console.error('Error fetching workflow runs:', runsErr);
+        res.json({ 
+          message: 'Test run triggered successfully',
+          scheduledTestId: id,
+          workflowId: targetWorkflowFinal.id,
+          workflowName: targetWorkflowFinal.name,
+          repository: scheduledTest.github_repo_full_name
+        });
+      }
+    } else {
+      console.log(`Unexpected response status: ${triggerResponse.status}`);
+      res.json({ 
+        message: 'Test run triggered successfully',
+        scheduledTestId: id,
+        workflowId: targetWorkflowFinal.id,
+        workflowName: targetWorkflowFinal.name,
+        repository: scheduledTest.github_repo_full_name
+      });
+    }
+    
+  } catch (err) {
+    console.error('Error triggering test run:', err);
+    console.error('Error response data:', err.response?.data);
+    console.error('Error response status:', err.response?.status);
+    console.error('Error response headers:', err.response?.headers);
+    
+    // Update status to failed
+    try {
+      await prisma.scheduledTest.update({
+        where: { id: Number(id) },
+        data: {
+          last_run_status: 'failed',
+          last_run_time: new Date().toISOString()
+        }
+      });
+    } catch (updateErr) {
+      console.error('Error updating status to failed:', updateErr);
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to trigger test run',
+      details: err.response?.data?.message || err.message,
+      status: err.response?.status,
+      githubError: err.response?.data
+    });
+  }
+});
+
+app.get('/api/teams/:teamId/scheduled-tests/:id/runs', requireAuth, requireTeamMember, async (req, res) => {
+  const { teamId, id } = req.params;
+  const { limit = 20 } = req.query;
+  
+  try {
+    // TODO: Implement actual run history
+    // For now, return empty array
+    res.json([]);
+  } catch (err) {
+    console.error('Error fetching run history:', err);
+    res.status(500).json({ error: 'Failed to fetch run history' });
+  }
+});
+
+// Check workflow run status
+app.get('/api/teams/:teamId/scheduled-tests/:id/status', requireAuth, requireTeamMember, async (req, res) => {
+  const { teamId, id } = req.params;
+  
+  try {
+    const scheduledTest = await prisma.scheduledTest.findFirst({
+      where: { 
+        id: Number(id),
+        teamId: Number(teamId)
+      }
+    });
+    
+    if (!scheduledTest) {
+      return res.status(404).json({ error: 'Scheduled test not found' });
+    }
+    
+    if (!scheduledTest.last_workflow_run_id) {
+      return res.json({ status: scheduledTest.last_run_status, message: 'No workflow run found' });
+    }
+    
+    // Get GitHub token for the team
+    const githubToken = await getGithubTokenForTeam(teamId);
+    if (!githubToken) {
+      return res.status(401).json({ error: 'GitHub token not found for this team' });
+    }
+    
+    // Extract owner and repo from the full name
+    const [owner, repo] = scheduledTest.github_repo_full_name.split('/');
+    if (!owner || !repo) {
+      return res.status(400).json({ error: 'Invalid repository format' });
+    }
+    
+    // Get the workflow run status from GitHub
+    const runResponse = await axios.get(`https://api.github.com/repos/${owner}/${repo}/actions/runs/${scheduledTest.last_workflow_run_id}`, {
+      headers: { Authorization: `token ${githubToken}` }
+    });
+    
+    const run = runResponse.data;
+    const status = run.status === 'completed' ? run.conclusion : run.status;
+    
+    // Update the database with the current status
+    await prisma.scheduledTest.update({
+      where: { id: Number(id) },
+      data: {
+        last_run_status: status,
+        last_run_time: new Date(run.created_at).toISOString()
+      }
+    });
+    
+    res.json({ 
+      status: status,
+      workflowRunId: run.id,
+      createdAt: run.created_at,
+      updatedAt: run.updated_at,
+      conclusion: run.conclusion,
+      url: run.html_url
+    });
+    
+  } catch (err) {
+    console.error('Error checking workflow status:', err);
+    res.status(500).json({ error: 'Failed to check workflow status', details: err.message });
   }
 });
 

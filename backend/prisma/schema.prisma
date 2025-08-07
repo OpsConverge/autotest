@@ -28,6 +28,7 @@ model Team {
   githubToken  GithubToken?
   builds       Build[]
   releases     Release[]
+  scheduledTests ScheduledTest[]
 }
 
 model TeamMember {
@@ -112,4 +113,23 @@ model TestRun {
   branch             String?
   commitHash         String?
   createdAt          DateTime @default(now())
+}
+
+model ScheduledTest {
+  id                    Int      @id @default(autoincrement())
+  team                  Team     @relation(fields: [teamId], references: [id])
+  teamId                Int
+  name                  String
+  description           String?
+  test_type             String   // "on_demand" or "scheduled"
+  cron_expression       String?  // Standard cron expression for scheduled tests
+  github_repo_full_name String
+  workflow_file_name    String
+  is_active             Boolean  @default(true)
+  last_run_status       String   @default("never_run") // "succeeded", "failed", "pending", "running", "never_run"
+  last_run_time         DateTime?
+  next_run_time         DateTime?
+  last_workflow_run_id  BigInt?  // GitHub workflow run ID for tracking status
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }

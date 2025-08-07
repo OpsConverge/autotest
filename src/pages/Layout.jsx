@@ -13,7 +13,8 @@ import {
   Menu,
   Bell,
   Zap, // Added Zap icon
-  AlertTriangle // Added AlertTriangle icon for Flakiness
+  AlertTriangle, // Added AlertTriangle icon for Flakiness
+  Calendar // Added Calendar icon for TestScheduling
 } from "lucide-react";
 import {
   Sidebar,
@@ -57,6 +58,11 @@ const navigationItems = [
     title: "Flakiness",
     url: createPageUrl("Flakiness"),
     icon: AlertTriangle,
+  },
+  {
+    title: "Test Scheduling",
+    url: createPageUrl("TestScheduling"),
+    icon: Calendar,
   },
   {
     title: "Integrations", // New navigation item for Integrations

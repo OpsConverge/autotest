@@ -209,3 +209,101 @@ export const TeamSettings = {
 };
 
 export const User = {};
+
+export const ScheduledTest = {
+  async list(sortBy = "-createdAt", limit = 50) {
+    const teamId = getActiveTeamId();
+    if (!teamId) throw new Error('No active team');
+    
+    const url = `http://localhost:4000/api/teams/${teamId}/scheduled-tests?sortBy=${encodeURIComponent(sortBy)}&limit=${limit}`;
+    const res = await fetch(url, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) throw new Error('Failed to load scheduled tests');
+    return res.json();
+  },
+
+  async get(id) {
+    const teamId = getActiveTeamId();
+    if (!teamId) throw new Error('No active team');
+    
+    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) throw new Error('Failed to load scheduled test');
+    return res.json();
+  },
+
+  async create(data) {
+    const teamId = getActiveTeamId();
+    if (!teamId) throw new Error('No active team');
+    
+    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to create scheduled test');
+    return res.json();
+  },
+
+  async update(id, data) {
+    const teamId = getActiveTeamId();
+    if (!teamId) throw new Error('No active team');
+    
+    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to update scheduled test');
+    return res.json();
+  },
+
+  async delete(id) {
+    const teamId = getActiveTeamId();
+    if (!teamId) throw new Error('No active team');
+    
+    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) throw new Error('Failed to delete scheduled test');
+    return res.json();
+  },
+
+  async runNow(id) {
+    const teamId = getActiveTeamId();
+    if (!teamId) throw new Error('No active team');
+    
+    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}/run`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) throw new Error('Failed to trigger test run');
+    return res.json();
+  },
+
+  async getRunHistory(id, limit = 20) {
+    const teamId = getActiveTeamId();
+    if (!teamId) throw new Error('No active team');
+    
+    const url = `http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}/runs?limit=${limit}`;
+    const res = await fetch(url, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) throw new Error('Failed to load run history');
+    return res.json();
+  },
+
+  async checkStatus(id) {
+    const teamId = getActiveTeamId();
+    if (!teamId) throw new Error('No active team');
+    
+    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}/status`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) throw new Error('Failed to check status');
+    return res.json();
+  }
+};

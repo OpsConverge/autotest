@@ -7,6 +7,7 @@ import AIAssistant from "./AIAssistant";
 import Settings from "./Settings";
 import Integrations from "./Integrations";
 import Flakiness from "./Flakiness";
+import TestScheduling from "./TestScheduling";
 import Login from "./Login";
 import Register from "./Register";
 import LandingPage from "./landing";
@@ -21,6 +22,7 @@ const PAGES = {
     Settings: Settings,
     Integrations: Integrations,
     Flakiness: Flakiness,
+    TestScheduling: TestScheduling,
 }
 
 function _getCurrentPage(url) {
@@ -72,6 +74,16 @@ function PagesContent() {
                 }
             />
             <Route
+                path="/testscheduling"
+                element={
+                    <RequireAuth>
+                        <Layout currentPageName="TestScheduling">
+                            <TestScheduling />
+                        </Layout>
+                    </RequireAuth>
+                }
+            />
+            <Route
                 path="/teams/:teamId/*"
                 element={
                     <RequireAuth>
@@ -85,6 +97,7 @@ function PagesContent() {
                                 <Route path="settings" element={<Settings />} />
                                 <Route path="integrations" element={<Integrations />} />
                                 <Route path="flakiness" element={<Flakiness />} />
+                                <Route path="testscheduling" element={<TestScheduling />} />
                             </Routes>
                         </Layout>
                     </RequireAuth>
