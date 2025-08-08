@@ -1,46 +1,84 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
-  Zap, 
   Github, 
-  MessageSquare, 
   ExternalLink, 
-  CheckCircle2, 
-  Copy, 
-  Terminal, 
-  GitBranch,
-  Plus,
-  Trash2,
-  Search
+  Plus, 
+  Trash2, 
+  AlertTriangle, 
+  CheckCircle, 
+  Settings,
+  Users,
+  Shield
 } from "lucide-react";
-
-import GitHubRepoSelector from "./GitHubRepoSelector";
-
-const CodeBlock = ({ children }) => (
-  <div className="bg-slate-800 text-slate-100 rounded-md p-4 text-sm font-mono overflow-x-auto">
-    <pre><code>{children}</code></pre>
-  </div>
-);
+import { useTeam } from '../../context/TeamContext';
+import { GitHubIntegration } from '../../api/entities';
 
 export default function IntegrationSettings({ settings, onUpdate }) {
+  const { activeTeam } = useTeam();
+  const [githubStatus, setGithubStatus] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [showRepoSelector, setShowRepoSelector] = useState(false);
-  const uniqueApiEndpoint = "https://api.testflow.ai/v1/results/upload/a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890";
+
+  // Fetch GitHub status for the current team
+  const fetchGitHubStatus = async () => {
+    console.log('=== fetchGitHubStatus called ==='); // Very prominent debug log
+    console.log('activeTeam:', activeTeam); // Debug activeTeam
+    
+    if (!activeTeam) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const token = localStorage.getItem('token');
+      console.log('Token exists:', !!token); // Debug token
+      
+      const response = await fetch(`http://localhost:4000/api/teams/${activeTeam.id}/github/status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const status = await response.json();
+        console.log('GitHub status:', status); // Debug log
+        console.log('isConnected:', status.isConnected); // Debug log
+        console.log('hasToken:', status.hasToken); // Debug log
+        setGithubStatus(status);
+      } else {
+        console.error('Failed to fetch GitHub status, response:', response.status, response.statusText); // Debug log
+        setError('Failed to fetch GitHub status');
+      }
+    } catch (err) {
+      console.error('Error fetching GitHub status:', err); // Debug log
+      setError('Failed to fetch GitHub status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGitHubStatus();
+  }, [activeTeam]);
 
   const updateSlackConfig = (webhook) => {
     onUpdate({
+      ...settings,
       slack_webhook: webhook
     });
   };
 
   const updateGithubConfig = (config) => {
     onUpdate({
+      ...settings,
       github_config: {
-        ...settings.github_config,
+        ...(settings?.github_config || {}),
         ...config
       }
     });
@@ -48,36 +86,125 @@ export default function IntegrationSettings({ settings, onUpdate }) {
 
   const updateJiraConfig = (config) => {
     onUpdate({
+      ...settings,
       jira_config: {
-        ...settings.jira_config,
+        ...(settings?.jira_config || {}),
         ...config
       }
     });
   };
 
   const addGitHubRepo = (repo) => {
-    const existingRepos = settings.github_config?.repositories || [];
+    const existingRepos = settings?.github_config?.repositories || [];
     const updatedRepos = [...existingRepos, repo];
     
-    onUpdate({
-      github_config: {
-        ...settings.github_config,
-        repositories: updatedRepos
-      }
+    updateGithubConfig({
+      repositories: updatedRepos
     });
+    
     setShowRepoSelector(false);
   };
 
   const removeGitHubRepo = (repoId) => {
-    const existingRepos = settings.github_config?.repositories || [];
+    const existingRepos = settings?.github_config?.repositories || [];
     const updatedRepos = existingRepos.filter(repo => repo.id !== repoId);
     
-    onUpdate({
-      github_config: {
-        ...settings.github_config,
-        repositories: updatedRepos
-      }
+    updateGithubConfig({
+      repositories: updatedRepos
     });
+  };
+
+  const handleConnectGitHub = () => {
+    if (!activeTeam) {
+      setError('No active team selected');
+      return;
+    }
+    
+    try {
+      const loginUrl = GitHubIntegration.githubLoginUrl();
+      console.log('Redirecting to GitHub OAuth:', loginUrl); // Debug log
+      window.location.href = loginUrl;
+    } catch (err) {
+      console.error('Error in handleConnectGitHub:', err); // Debug log
+      setError(err.message);
+    }
+  };
+
+  const handleDisconnectGitHub = async () => {
+    if (!activeTeam) return;
+    
+    // Add confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to disconnect ${activeTeam.name} from GitHub? This will remove access to all connected repositories and workflows.`
+    );
+    
+    if (!confirmed) return;
+    
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:4000/api/teams/${activeTeam.id}/github/disconnect`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        setGithubStatus({ ...githubStatus, isConnected: false, hasToken: false });
+        updateGithubConfig({ is_connected: false, repositories: [] });
+        setSuccess('GitHub integration disconnected successfully');
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to disconnect GitHub');
+      }
+    } catch (err) {
+      setError('Failed to disconnect GitHub');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualSync = (repoId) => {
+    if (!settings?.github_config?.repositories) return;
+
+    const updatedRepos = settings.github_config.repositories.map(repo => {
+      if (repo.id === repoId) {
+        return {
+          ...repo,
+          last_sync_status: 'ok',
+          last_sync_time: new Date().toISOString()
+        };
+      }
+      return repo;
+    });
+
+    updateGithubConfig({ repositories: updatedRepos });
+  };
+
+  const fetchGithubRepos = async () => {
+    try {
+      const repos = await GitHubIntegration.fetchRepos();
+      setGithubRepos(repos);
+    } catch (err) {
+      setGithubRepos([]);
+    }
+  };
+
+  const handleSelectRepoForWorkflows = async (repo) => {
+    setSelectedRepo(repo);
+    setIsLoadingWorkflows(true);
+    setWorkflows([]);
+    try {
+      const data = await GitHubIntegration.fetchWorkflows(repo.full_name);
+      setWorkflows(data.workflows || []);
+    } catch (err) {
+      setWorkflows([]);
+    }
+    setIsLoadingWorkflows(false);
   };
 
   return (
@@ -85,54 +212,11 @@ export default function IntegrationSettings({ settings, onUpdate }) {
       <Card className="glass-effect border-0 shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="w-6 h-6 text-yellow-600" />
-            Platform Integrations
+            <Github className="w-6 h-6 text-slate-700" />
+            GitHub Integration
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Slack Integration */}
-          <div className="p-6 rounded-lg border border-slate-200 bg-gradient-to-r from-green-50 to-emerald-50">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-green-100">
-                  <MessageSquare className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-slate-900">Slack</h4>
-                  <p className="text-sm text-slate-600">Send notifications to Slack channels</p>
-                </div>
-              </div>
-              <Badge className={settings?.slack_webhook ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
-                {settings?.slack_webhook ? 'Connected' : 'Not Connected'}
-              </Badge>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="slack_webhook">Webhook URL</Label>
-                <Input
-                  id="slack_webhook"
-                  value={settings?.slack_webhook || ''}
-                  onChange={(e) => updateSlackConfig(e.target.value)}
-                  placeholder="https://hooks.slack.com/services/..."
-                  type="url"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <ExternalLink className="w-3 h-3 mr-1" />
-                  Setup Guide
-                </Button>
-                {settings?.slack_webhook && (
-                  <Button variant="outline" size="sm">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Test Connection
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* GitHub Integration */}
           <div className="p-6 rounded-lg border border-slate-200 bg-gradient-to-r from-gray-50 to-slate-50">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -140,87 +224,141 @@ export default function IntegrationSettings({ settings, onUpdate }) {
                   <Github className="w-5 h-5 text-slate-700" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-slate-900">GitHub</h4>
-                  <p className="text-sm text-slate-600">Integrate with GitHub Actions and repositories</p>
+                  <h4 className="font-semibold text-slate-900">GitHub Integration</h4>
+                  <p className="text-sm text-slate-600">
+                    {activeTeam ? `Connect ${activeTeam.name} to GitHub repositories` : 'Select a team to manage GitHub integration'}
+                  </p>
                 </div>
               </div>
-              <Badge className={settings?.github_config?.access_token ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
-                {settings?.github_config?.access_token ? 'Connected' : 'Not Connected'}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {githubStatus?.permissions?.canManage && (
+                  <Badge className="bg-blue-100 text-blue-800 text-xs">
+                    {githubStatus.permissions.userRole}
+                  </Badge>
+                )}
+                <Badge className={githubStatus?.isConnected ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
+                  {githubStatus?.isConnected ? 'Connected' : 'Not Connected'}
+                </Badge>
+              </div>
             </div>
             
-            <div className="space-y-4">
-              {/* Access Token */}
-              <div>
-                <Label htmlFor="github_token">Personal Access Token</Label>
-                <Input
-                  id="github_token"
-                  type="password"
-                  value={settings?.github_config?.access_token || ''}
-                  onChange={(e) => updateGithubConfig({ access_token: e.target.value })}
-                  placeholder="ghp_xxxxxxxxxxxx"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Required to browse and connect repositories
-                </p>
+            {!activeTeam ? (
+              <div className="text-center py-6 text-slate-500">
+                <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                <p className="text-sm">No team selected</p>
+                <p className="text-xs text-slate-400">Select a team to manage GitHub integration</p>
               </div>
+            ) : !githubStatus?.permissions?.canManage ? (
+              <div className="text-center py-6 text-slate-500">
+                <Shield className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                <p className="text-sm">Insufficient permissions</p>
+                <p className="text-xs text-slate-400">Only team owners and admins can manage GitHub integration</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Connection Status */}
+                {githubStatus?.isConnected ? (
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-800">GitHub Connected</span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleDisconnectGitHub}
+                      disabled={loading}
+                      className="text-red-600 hover:text-red-800 border-red-300"
+                    >
+                      {loading ? 'Disconnecting...' : 'Disconnect GitHub'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-slate-600" />
+                      <span className="text-sm font-medium text-slate-800">GitHub Not Connected</span>
+                    </div>
+                    <Button 
+                      onClick={handleConnectGitHub}
+                      disabled={loading}
+                      className="bg-slate-900 hover:bg-slate-800"
+                    >
+                      {loading ? 'Connecting...' : 'Connect GitHub'}
+                    </Button>
+                  </div>
+                )}
 
-              {/* Connected Repositories */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <Label>Connected Repositories</Label>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setShowRepoSelector(true)}
-                    disabled={!settings?.github_config?.access_token}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Repository
-                  </Button>
-                </div>
-                
-                <div className="space-y-2">
-                  {settings?.github_config?.repositories?.map((repo) => (
-                    <div key={repo.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
-                      <div className="flex items-center gap-3">
-                        <Github className="w-4 h-4 text-slate-600" />
-                        <div>
-                          <p className="font-medium text-slate-900">{repo.full_name}</p>
-                          <p className="text-xs text-slate-500">{repo.default_branch} branch</p>
+                {/* Connected Repositories */}
+                {githubStatus?.isConnected && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <Label>Connected Repositories</Label>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowRepoSelector(true)}
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add Repository
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {githubStatus?.repositories?.length > 0 ? (
+                        githubStatus.repositories.map((repo) => (
+                          <div key={repo.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
+                            <div className="flex items-center gap-3">
+                              <Github className="w-4 h-4 text-slate-600" />
+                              <div>
+                                <p className="font-medium text-slate-900">{repo.full_name}</p>
+                                <p className="text-xs text-slate-500">{repo.default_branch} branch</p>
+                              </div>
+                              {repo.has_actions && (
+                                <Badge className="bg-blue-100 text-blue-800 text-xs">
+                                  Actions Enabled
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="sm" asChild>
+                                <a href={repo.html_url} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => removeGitHubRepo(repo.id)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-6 text-slate-500">
+                          <Github className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                          <p className="text-sm">No repositories connected</p>
+                          <p className="text-xs text-slate-400">Add your first repository to get started</p>
                         </div>
-                        {repo.has_actions && (
-                          <Badge className="bg-blue-100 text-blue-800 text-xs">
-                            Actions Enabled
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" asChild>
-                          <a href={repo.html_url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => removeGitHubRepo(repo.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                      )}
                     </div>
-                  )) || (
-                    <div className="text-center py-6 text-slate-500">
-                      <Github className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                      <p className="text-sm">No repositories connected</p>
-                      <p className="text-xs text-slate-400">Add your first repository to get started</p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
+
+                {/* Team-specific information */}
+                {activeTeam && (
+                  <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                    <p className="text-xs text-slate-600">
+                      <strong>Team:</strong> {activeTeam.name} | 
+                      <strong> Integration Scope:</strong> Team-wide (all team members can access connected repositories)
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Jira Integration */}
@@ -276,70 +414,174 @@ export default function IntegrationSettings({ settings, onUpdate }) {
       <Card className="glass-effect border-0 shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <GitBranch className="w-6 h-6 text-indigo-600" />
-            CI/CD Integration & API
+            <Shield className="w-6 h-6 text-indigo-600" />
+            Team Settings
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div>
-            <Label htmlFor="api-endpoint">Your Unique API Endpoint</Label>
-            <div className="flex items-center gap-2">
-              <Input id="api-endpoint" value={uniqueApiEndpoint} readOnly />
-              <Button variant="outline" size="icon" onClick={() => navigator.clipboard.writeText(uniqueApiEndpoint)}>
-                <Copy className="w-4 h-4" />
-              </Button>
+          <div className="p-6 rounded-lg border border-slate-200 bg-gradient-to-r from-purple-50 to-pink-50">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-100">
+                  <Users className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-900">Team Members</h4>
+                  <p className="text-sm text-slate-600">Manage your team's members and permissions</p>
+                </div>
+              </div>
+              <Badge className="bg-slate-100 text-slate-800">
+                {activeTeam?.name || 'No Team Selected'}
+              </Badge>
             </div>
-            <p className="text-xs text-slate-500 mt-1">Use this endpoint to post your test results from any CI/CD platform.</p>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
-              <Terminal className="w-5 h-5" />
-              Example using cURL
-            </h4>
-            <CodeBlock>
-              {`curl -X POST \\
-  '${uniqueApiEndpoint}' \\
-  -H 'Content-Type: application/xml' \\
-  -H 'X-API-KEY: YOUR_TEAM_API_KEY' \\
-  --data-binary "@path/to/your/report.xml"`}
-            </CodeBlock>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
-              <GitBranch className="w-5 h-5" />
-              Example for GitHub Actions
-            </h4>
-            <CodeBlock>
-              {`name: Test and Upload Results
-
-on: [push]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Run tests
-      run: npm test # Generates results.xml
-
-    - name: "Upload to TestFlow"
-      run: |
-        curl -X POST \\
-          '${uniqueApiEndpoint}' \\
-          -H 'Content-Type: application/xml' \\
-          -H 'X-API-KEY: \${{ secrets.TESTFLOW_API_KEY }}' \\
-          --data-binary "@path/to/results.xml"`}
-            </CodeBlock>
-          </div>
-           <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 mt-4">
-              <p className="text-sm text-blue-800">
-                You can generate and manage your team's API keys under the <span className="font-semibold">Team</span> tab.
-              </p>
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="team-name">Team Name</Label>
+                <Input
+                  id="team-name"
+                  value={activeTeam?.name || ''}
+                  onChange={(e) => {
+                    if (activeTeam) {
+                      onUpdate({
+                        [activeTeam.id]: { name: e.target.value }
+                      });
+                    }
+                  }}
+                  placeholder="Enter team name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="team-description">Team Description</Label>
+                <Input
+                  id="team-description"
+                  value={activeTeam?.description || ''}
+                  onChange={(e) => {
+                    if (activeTeam) {
+                      onUpdate({
+                        [activeTeam.id]: { description: e.target.value }
+                      });
+                    }
+                  }}
+                  placeholder="Enter team description"
+                />
+              </div>
+              <div>
+                <Label htmlFor="team-api-key">Team API Key</Label>
+                <Input
+                  id="team-api-key"
+                  value={activeTeam?.api_key || ''}
+                  onChange={(e) => {
+                    if (activeTeam) {
+                      onUpdate({
+                        [activeTeam.id]: { api_key: e.target.value }
+                      });
+                    }
+                  }}
+                  placeholder="API key"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  This key is used for API authentication. Keep it secure.
+                </p>
+              </div>
             </div>
+          </div>
+
+          <div className="p-6 rounded-lg border border-slate-200 bg-gradient-to-r from-yellow-50 to-amber-50">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-yellow-100">
+                  <Settings className="w-5 h-5 text-yellow-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-900">Team Settings</h4>
+                  <p className="text-sm text-slate-600">Configure team-specific settings</p>
+                </div>
+              </div>
+              <Badge className="bg-slate-100 text-slate-800">
+                {activeTeam?.name || 'No Team Selected'}
+              </Badge>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="team-webhook">Team Webhook URL</Label>
+                <Input
+                  id="team-webhook"
+                  value={activeTeam?.slack_webhook || ''}
+                  onChange={(e) => {
+                    if (activeTeam) {
+                      onUpdate({
+                        [activeTeam.id]: { slack_webhook: e.target.value }
+                      });
+                    }
+                  }}
+                  placeholder="https://hooks.slack.com/services/..."
+                  type="url"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  This webhook will be used for notifications within this team.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="team-jira-url">Team Jira URL</Label>
+                <Input
+                  id="team-jira-url"
+                  value={activeTeam?.jira_config?.url || ''}
+                  onChange={(e) => {
+                    if (activeTeam) {
+                      onUpdate({
+                        [activeTeam.id]: { jira_config: { ...activeTeam.jira_config, url: e.target.value } }
+                      });
+                    }
+                  }}
+                  placeholder="https://company.atlassian.net"
+                />
+              </div>
+              <div>
+                <Label htmlFor="team-jira-project">Team Jira Project Key</Label>
+                <Input
+                  id="team-jira-project"
+                  value={activeTeam?.jira_config?.project_key || ''}
+                  onChange={(e) => {
+                    if (activeTeam) {
+                      onUpdate({
+                        [activeTeam.id]: { jira_config: { ...activeTeam.jira_config, project_key: e.target.value } }
+                      });
+                    }
+                  }}
+                  placeholder="TEST"
+                />
+              </div>
+              <div>
+                <Label htmlFor="team-jira-token">Team Jira API Token</Label>
+                <Input
+                  id="team-jira-token"
+                  type="password"
+                  value={activeTeam?.jira_config?.api_token || ''}
+                  onChange={(e) => {
+                    if (activeTeam) {
+                      onUpdate({
+                        [activeTeam.id]: { jira_config: { ...activeTeam.jira_config, api_token: e.target.value } }
+                      });
+                    }
+                  }}
+                  placeholder="API token"
+                />
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {success && (
+            <Alert variant="success">
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 

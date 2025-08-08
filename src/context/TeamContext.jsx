@@ -44,8 +44,23 @@ export function TeamProvider({ children }) {
     teams,
     activeTeam,
     setActiveTeam,
+    setTeams,
     refreshTeams: fetchTeams,
     loading,
+    logout: () => {
+      // Clear all stored data
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('activeTeamId');
+      localStorage.removeItem('teams');
+      
+      // Reset state
+      setTeams([]);
+      setActiveTeam(null);
+      
+      // Redirect to landing page
+      window.location.href = '/';
+    },
   };
 
   return (

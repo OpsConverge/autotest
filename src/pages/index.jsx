@@ -45,44 +45,37 @@ function RequireAuth({ children }) {
     return children;
 }
 
+function TeamRedirect({ to }) {
+    const teamId = localStorage.getItem('activeTeamId') || '1';
+    return <Navigate to={`/teams/${teamId}/${to}`} replace />;
+}
+
 function PagesContent() {
     const location = useLocation();
     const currentPage = _getCurrentPage(location.pathname);
+    const token = localStorage.getItem('token');
+    
     return (
         <Routes>
-            <Route path="/" element={<LandingPage />} />
+            {/* Public routes */}
             <Route path="/Login" element={<Login />} />
             <Route path="/Register" element={<Register />} />
-            <Route
-                path="/integrations"
+            
+            {/* Landing page - show for unauthenticated users, redirect authenticated users */}
+            <Route 
+                path="/" 
                 element={
-                    <RequireAuth>
-                        <Layout currentPageName="Integrations">
-                            <Integrations />
-                        </Layout>
-                    </RequireAuth>
-                }
+                    token ? (
+                        <RequireAuth>
+                            <TeamRedirect to="dashboard" />
+                        </RequireAuth>
+                    ) : (
+                        <LandingPage />
+                    )
+                } 
             />
-            <Route
-                path="/flakiness"
-                element={
-                    <RequireAuth>
-                        <Layout currentPageName="Flakiness">
-                            <Flakiness />
-                        </Layout>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path="/testscheduling"
-                element={
-                    <RequireAuth>
-                        <Layout currentPageName="TestScheduling">
-                            <TestScheduling />
-                        </Layout>
-                    </RequireAuth>
-                }
-            />
+            
+            {/* Team-scoped routes */}
             <Route
                 path="/teams/:teamId/*"
                 element={
@@ -100,6 +93,80 @@ function PagesContent() {
                                 <Route path="testscheduling" element={<TestScheduling />} />
                             </Routes>
                         </Layout>
+                    </RequireAuth>
+                }
+            />
+            
+            {/* Redirect root routes to team-scoped routes */}
+            <Route
+                path="/dashboard"
+                element={
+                    <RequireAuth>
+                        <TeamRedirect to="dashboard" />
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/settings"
+                element={
+                    <RequireAuth>
+                        <TeamRedirect to="settings" />
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/testresults"
+                element={
+                    <RequireAuth>
+                        <TeamRedirect to="testresults" />
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/buildhistory"
+                element={
+                    <RequireAuth>
+                        <TeamRedirect to="buildhistory" />
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/analytics"
+                element={
+                    <RequireAuth>
+                        <TeamRedirect to="analytics" />
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/aiassistant"
+                element={
+                    <RequireAuth>
+                        <TeamRedirect to="aiassistant" />
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/integrations"
+                element={
+                    <RequireAuth>
+                        <TeamRedirect to="integrations" />
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/flakiness"
+                element={
+                    <RequireAuth>
+                        <TeamRedirect to="flakiness" />
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/testscheduling"
+                element={
+                    <RequireAuth>
+                        <TeamRedirect to="testscheduling" />
                     </RequireAuth>
                 }
             />

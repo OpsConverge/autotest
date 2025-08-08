@@ -16,28 +16,41 @@ export default function Login() {
     try {
       const res = await apiClient.login(email, password);
       localStorage.setItem('token', res.token);
-      localStorage.setItem('user', res.email);
-      // Get the user's teams from localStorage or API
-      let teams = JSON.parse(localStorage.getItem('teams') || '[]');
-      let teamId = teams.length > 0 ? teams[0].id : localStorage.getItem('activeTeamId');
-      if (!teamId) {
-        // fallback: fetch teams from API if not in localStorage
+      localStorage.setItem('user', JSON.stringify({ email: res.email }));
+      
+      console.log('[Login] User logged in successfully:', res.email);
+      
+      // Always fetch teams from API to ensure we have the latest data
+      try {
         const response = await fetch('http://localhost:4000/api/teams', {
           headers: { Authorization: `Bearer ${res.token}` }
         });
-        const data = await response.json();
-        if (data.teams && data.teams.length > 0) {
-          teamId = data.teams[0].id;
-          localStorage.setItem('teams', JSON.stringify(data.teams));
-          localStorage.setItem('activeTeamId', teamId);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[Login] Teams fetched:', data.teams);
+          
+          if (data.teams && data.teams.length > 0) {
+            const teamId = data.teams[0].id;
+            localStorage.setItem('teams', JSON.stringify(data.teams));
+            localStorage.setItem('activeTeamId', teamId);
+            
+            console.log('[Login] Redirecting to team dashboard:', teamId);
+            navigate(`/teams/${teamId}/dashboard`);
+          } else {
+            console.log('[Login] No teams found, redirecting to landing page');
+            navigate('/');
+          }
+        } else {
+          console.error('[Login] Failed to fetch teams:', response.status);
+          setError('Failed to load user teams');
         }
-      }
-      if (teamId) {
-        navigate(`/teams/${teamId}/dashboard`);
-      } else {
-        navigate('/');
+      } catch (teamsErr) {
+        console.error('[Login] Error fetching teams:', teamsErr);
+        setError('Failed to load user teams');
       }
     } catch (err) {
+      console.error('[Login] Login failed:', err);
       setError('Invalid email or password');
     } finally {
       setLoading(false);

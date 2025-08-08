@@ -13,8 +13,8 @@ const app = express();
 const PORT = 4000;
 const JWT_SECRET = 'dev_secret';
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
-app.options('*', cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:5173'], credentials: true }));
+app.options('*', cors({ origin: ['http://localhost:3000', 'http://localhost:5173'], credentials: true }));
 app.use(bodyParser.json());
 
 // Helper to get user email from JWT or request
@@ -50,8 +50,32 @@ app.post('/api/auth/register', async (req, res) => {
     }
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({ data: { email, passwordHash } });
-    return res.json({ success: true, user: { id: user.id, email: user.email } });
+    
+    // Create a "Default Team" for the new user and assign them as Owner/Admin
+    console.log('[POST /api/auth/register] Creating default team for user:', user.id);
+    const defaultTeam = await prisma.team.create({ 
+      data: { 
+        name: 'Default Team' 
+      } 
+    });
+    console.log('[POST /api/auth/register] Default team created:', defaultTeam);
+    
+    await prisma.teamMember.create({ 
+      data: { 
+        userId: user.id, 
+        teamId: defaultTeam.id, 
+        role: 'owner' 
+      } 
+    });
+    console.log('[POST /api/auth/register] User assigned as owner to default team');
+    
+    return res.json({ 
+      success: true, 
+      user: { id: user.id, email: user.email },
+      team: { id: defaultTeam.id, name: defaultTeam.name }
+    });
   } catch (err) {
+    console.error('[POST /api/auth/register] Error during registration:', err);
     return res.status(500).json({ error: 'Registration failed' });
   }
 });
@@ -162,12 +186,16 @@ app.get('/api/github/workflows', async (req, res) => {
 // Create a new team and add current user as owner
 app.post('/api/teams', requireAuth, async (req, res) => {
   const { name } = req.body;
+  console.log('[POST /api/teams] Creating team:', { name, userId: req.user.id });
   if (!name) return res.status(400).json({ error: 'Team name required' });
   try {
     const team = await prisma.team.create({ data: { name } });
+    console.log('[POST /api/teams] Team created:', team);
     await prisma.teamMember.create({ data: { userId: req.user.id, teamId: team.id, role: 'owner' } });
+    console.log('[POST /api/teams] Team member created for user:', req.user.id);
     return res.json({ team });
   } catch (err) {
+    console.error('[POST /api/teams] Error creating team:', err);
     return res.status(500).json({ error: 'Failed to create team' });
   }
 });
@@ -226,6 +254,95 @@ app.get('/api/teams/:teamId/members', requireAuth, async (req, res) => {
   }
 });
 
+// Update team member role (only owners and admins can do this)
+app.put('/api/teams/:teamId/members/:userId/role', requireAuth, requireGitHubPermission, async (req, res) => {
+  const { teamId, userId } = req.params;
+  const { role } = req.body;
+  
+  if (!role || !['owner', 'admin', 'member'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role. Must be owner, admin, or member' });
+  }
+  
+  try {
+    // Check if the target user is a member of the team
+    const targetMember = await prisma.teamMember.findUnique({
+      where: { userId_teamId: { userId: Number(userId), teamId: Number(teamId) } }
+    });
+    
+    if (!targetMember) {
+      return res.status(404).json({ error: 'User is not a member of this team' });
+    }
+    
+    // Prevent changing the last owner's role
+    if (targetMember.role === 'owner' && role !== 'owner') {
+      const ownerCount = await prisma.teamMember.count({
+        where: { teamId: Number(teamId), role: 'owner' }
+      });
+      if (ownerCount <= 1) {
+        return res.status(400).json({ error: 'Cannot change the role of the last owner' });
+      }
+    }
+    
+    // Update the member's role
+    const updatedMember = await prisma.teamMember.update({
+      where: { userId_teamId: { userId: Number(userId), teamId: Number(teamId) } },
+      data: { role },
+      include: { user: true }
+    });
+    
+    return res.json({ 
+      member: { 
+        email: updatedMember.user.email, 
+        role: updatedMember.role 
+      } 
+    });
+  } catch (err) {
+    console.error('Error updating member role:', err);
+    return res.status(500).json({ error: 'Failed to update member role' });
+  }
+});
+
+// Remove team member (only owners and admins can do this)
+app.delete('/api/teams/:teamId/members/:userId', requireAuth, requireGitHubPermission, async (req, res) => {
+  const { teamId, userId } = req.params;
+  
+  try {
+    // Check if the target user is a member of the team
+    const targetMember = await prisma.teamMember.findUnique({
+      where: { userId_teamId: { userId: Number(userId), teamId: Number(teamId) } }
+    });
+    
+    if (!targetMember) {
+      return res.status(404).json({ error: 'User is not a member of this team' });
+    }
+    
+    // Prevent removing the last owner
+    if (targetMember.role === 'owner') {
+      const ownerCount = await prisma.teamMember.count({
+        where: { teamId: Number(teamId), role: 'owner' }
+      });
+      if (ownerCount <= 1) {
+        return res.status(400).json({ error: 'Cannot remove the last owner from the team' });
+      }
+    }
+    
+    // Prevent removing yourself
+    if (Number(userId) === req.user.id) {
+      return res.status(400).json({ error: 'Cannot remove yourself from the team' });
+    }
+    
+    // Remove the member
+    await prisma.teamMember.delete({
+      where: { userId_teamId: { userId: Number(userId), teamId: Number(teamId) } }
+    });
+    
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error removing member:', err);
+    return res.status(500).json({ error: 'Failed to remove member' });
+  }
+});
+
 // Helper: check if user is a member of the team
 async function requireTeamMember(req, res, next) {
   const { teamId } = req.params;
@@ -234,6 +351,26 @@ async function requireTeamMember(req, res, next) {
   console.log('[requireTeamMember] Membership found:', !!member);
   if (!member) return res.status(403).json({ error: 'Not a team member' });
   req.teamId = Number(teamId);
+  req.userRole = member.role;
+  next();
+}
+
+// Helper: check if user has admin/owner permissions for GitHub operations
+async function requireGitHubPermission(req, res, next) {
+  const { teamId } = req.params;
+  console.log('[requireGitHubPermission] Checking GitHub permissions for user:', req.user.id, 'team:', teamId);
+  const member = await prisma.teamMember.findUnique({ where: { userId_teamId: { userId: req.user.id, teamId: Number(teamId) } } });
+  console.log('[requireGitHubPermission] Member role:', member?.role);
+  
+  if (!member) return res.status(403).json({ error: 'Not a team member' });
+  
+  // Only owners and admins can manage GitHub integration
+  if (!['owner', 'admin'].includes(member.role)) {
+    return res.status(403).json({ error: 'Insufficient permissions. Only team owners and admins can manage GitHub integration.' });
+  }
+  
+  req.teamId = Number(teamId);
+  req.userRole = member.role;
   next();
 }
 
@@ -508,14 +645,14 @@ app.get('/api/teams/:teamId/test-runs', requireAuth, requireTeamMember, async (r
 const TEAM_GITHUB_CALLBACK_URL = process.env.TEAM_GITHUB_CALLBACK_URL || 'http://localhost:4000/api/teams/callback/github';
 
 // Step 1: Redirect to GitHub OAuth for a team
-app.get('/api/teams/:teamId/github/login', requireAuth, requireTeamMember, async (req, res) => {
+app.get('/api/teams/:teamId/github/login', requireAuth, requireGitHubPermission, async (req, res) => {
   const { teamId } = req.params;
   const state = Math.random().toString(36).substring(2);
   const scope = 'repo user';
   const url = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(TEAM_GITHUB_CALLBACK_URL)}&scope=${scope}&state=${state}&allow_signup=true`;
   // Store teamId in memory for callback (for demo, not secure)
   if (!global.teamGithubStates) global.teamGithubStates = {};
-  global.teamGithubStates[state] = { teamId, userId: req.user.id };
+  global.teamGithubStates[state] = { teamId, userId: req.user.id, userRole: req.userRole };
   res.redirect(url);
 });
 
@@ -569,6 +706,71 @@ app.get('/api/teams/:teamId/github/repos', requireAuth, requireTeamMember, async
     res.json(ghRes.data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch repos' });
+  }
+});
+
+// Get GitHub integration status for a team
+app.get('/api/teams/:teamId/github/status', requireAuth, requireTeamMember, async (req, res) => {
+  const { teamId } = req.params;
+  try {
+    const tokenRow = await prisma.githubToken.findUnique({ where: { teamId: Number(teamId) } });
+    const settings = await prisma.teamSettings.findUnique({ where: { teamId: Number(teamId) } });
+    
+    const isConnected = !!tokenRow;
+    const githubConfig = settings?.settings?.github_config || {};
+    
+    console.log(`[GitHub Status] Team ${teamId}:`, {
+      hasTokenRow: !!tokenRow,
+      hasAccessToken: !!tokenRow?.accessToken,
+      isConnected,
+      userRole: req.userRole,
+      canManage: ['owner', 'admin'].includes(req.userRole)
+    });
+    
+    res.json({
+      isConnected,
+      hasToken: !!tokenRow?.accessToken,
+      repositories: githubConfig.repositories || [],
+      lastSync: githubConfig.lastSync,
+      permissions: {
+        canManage: ['owner', 'admin'].includes(req.userRole),
+        userRole: req.userRole
+      }
+    });
+  } catch (err) {
+    console.error('[GitHub Status] Error:', err);
+    res.status(500).json({ error: 'Failed to get GitHub status' });
+  }
+});
+
+// Disconnect GitHub integration for a team
+app.delete('/api/teams/:teamId/github/disconnect', requireAuth, requireGitHubPermission, async (req, res) => {
+  const { teamId } = req.params;
+  try {
+    // Remove GitHub token
+    await prisma.githubToken.deleteMany({ where: { teamId: Number(teamId) } });
+    
+    // Update team settings
+    const settings = await prisma.teamSettings.findUnique({ where: { teamId: Number(teamId) } });
+    if (settings) {
+      const newSettings = { 
+        ...settings.settings, 
+        github_config: { 
+          ...(settings.settings.github_config || {}), 
+          is_connected: false,
+          repositories: [],
+          access_token: null
+        } 
+      };
+      await prisma.teamSettings.update({ 
+        where: { teamId: Number(teamId) }, 
+        data: { settings: newSettings } 
+      });
+    }
+    
+    res.json({ success: true, message: 'GitHub integration disconnected successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to disconnect GitHub integration' });
   }
 });
 
@@ -4437,3 +4639,161 @@ function convertBigInts(obj) {
   }
   return obj;
 }
+
+// Update team name (admin/owner only)
+app.put('/api/teams/:teamId/name', requireAuth, requireGitHubPermission, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Team name is required and cannot be empty' });
+    }
+    
+    const trimmedName = name.trim();
+    if (trimmedName.length > 100) {
+      return res.status(400).json({ error: 'Team name cannot exceed 100 characters' });
+    }
+    
+    const updatedTeam = await prisma.team.update({
+      where: { id: req.teamId },
+      data: { name: trimmedName }
+    });
+    
+    res.json({ success: true, team: { id: updatedTeam.id, name: updatedTeam.name } });
+  } catch (err) {
+    console.error('[PUT /api/teams/:teamId/name] Error updating team name:', err);
+    res.status(500).json({ error: 'Failed to update team name' });
+  }
+});
+
+// Get team settings
+app.get('/api/teams/:teamId/settings', requireAuth, requireTeamMember, async (req, res) => {
+  try {
+    let settings = await prisma.teamSettings.findUnique({ where: { teamId: req.teamId } });
+    if (!settings) {
+      // Create default settings if not exist
+      settings = await prisma.teamSettings.create({
+        data: {
+          teamId: req.teamId,
+          settings: {
+            team_name: '',
+            slack_webhook: '',
+            jira_config: { url: '', project_key: '', api_token: '' },
+            github_config: { is_connected: false, repositories: [] },
+            notification_preferences: { failed_tests: true, flaky_tests: true, coverage_drops: true },
+            flaky_threshold: 70
+          }
+        }
+      });
+    }
+    res.json(settings.settings);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to get team settings' });
+  }
+});
+
+// Update team member role (only owners and admins can do this)
+app.put('/api/teams/:teamId/members/:userId/role', requireAuth, requireGitHubPermission, async (req, res) => {
+  const { teamId, userId } = req.params;
+  const { role } = req.body;
+  
+  if (!role || !['owner', 'admin', 'member'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role. Must be owner, admin, or member' });
+  }
+  
+  try {
+    // Check if the target user is a member of the team
+    const targetMember = await prisma.teamMember.findUnique({
+      where: { userId_teamId: { userId: Number(userId), teamId: Number(teamId) } }
+    });
+    
+    if (!targetMember) {
+      return res.status(404).json({ error: 'User is not a member of this team' });
+    }
+    
+    // Prevent changing the last owner's role
+    if (targetMember.role === 'owner' && role !== 'owner') {
+      const ownerCount = await prisma.teamMember.count({
+        where: { teamId: Number(teamId), role: 'owner' }
+      });
+      if (ownerCount <= 1) {
+        return res.status(400).json({ error: 'Cannot change the role of the last owner' });
+      }
+    }
+    
+    // Update the member's role
+    const updatedMember = await prisma.teamMember.update({
+      where: { userId_teamId: { userId: Number(userId), teamId: Number(teamId) } },
+      data: { role },
+      include: { user: true }
+    });
+    
+    return res.json({ 
+      member: { 
+        email: updatedMember.user.email, 
+        role: updatedMember.role 
+      } 
+    });
+  } catch (err) {
+    console.error('Error updating member role:', err);
+    return res.status(500).json({ error: 'Failed to update member role' });
+  }
+});
+
+// Remove team member (only owners and admins can do this)
+app.delete('/api/teams/:teamId/members/:userId', requireAuth, requireGitHubPermission, async (req, res) => {
+  const { teamId, userId } = req.params;
+  
+  try {
+    // Check if the target user is a member of the team
+    const targetMember = await prisma.teamMember.findUnique({
+      where: { userId_teamId: { userId: Number(userId), teamId: Number(teamId) } }
+    });
+    
+    if (!targetMember) {
+      return res.status(404).json({ error: 'User is not a member of this team' });
+    }
+    
+    // Prevent removing the last owner
+    if (targetMember.role === 'owner') {
+      const ownerCount = await prisma.teamMember.count({
+        where: { teamId: Number(teamId), role: 'owner' }
+      });
+      if (ownerCount <= 1) {
+        return res.status(400).json({ error: 'Cannot remove the last owner from the team' });
+      }
+    }
+    
+    // Prevent removing yourself
+    if (Number(userId) === req.user.id) {
+      return res.status(400).json({ error: 'Cannot remove yourself from the team' });
+    }
+    
+    // Remove the member
+    await prisma.teamMember.delete({
+      where: { userId_teamId: { userId: Number(userId), teamId: Number(teamId) } }
+    });
+    
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error removing member:', err);
+    return res.status(500).json({ error: 'Failed to remove member' });
+  }
+});
+
+// Get user by email (for team management)
+app.get('/api/users/by-email/:email', requireAuth, async (req, res) => {
+  const { email } = req.params;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: decodeURIComponent(email) }
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    return res.json({ user: { id: user.id, email: user.email } });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+// List team members

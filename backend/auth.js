@@ -21,12 +21,24 @@ async function comparePassword(password, hash) {
 }
 
 function requireAuth(req, res, next) {
+  let token = null;
+  
+  // Check Authorization header first
   const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ')) {
+  if (auth && auth.startsWith('Bearer ')) {
+    token = auth.slice(7);
+  }
+  
+  // If no token in header, check query parameters (for OAuth redirects)
+  if (!token && req.query.token) {
+    token = req.query.token;
+  }
+  
+  if (!token) {
     return res.status(401).json({ error: 'Missing or invalid token' });
   }
+  
   try {
-    const token = auth.slice(7);
     req.user = verifyJwt(token);
     next();
   } catch (e) {

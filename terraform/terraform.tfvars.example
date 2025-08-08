@@ -1,0 +1,28 @@
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Project Configuration
+project_name = "base44-test-management"
+
+# Network Configuration
+vpc_cidr = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]
+private_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
+public_subnet_cidrs = ["10.0.101.0/24", "10.0.102.0/24"]
+
+# Instance Configuration
+ec2_instance_type = "t3.medium"
+
+# Database Configuration
+database_password = "your-secure-database-password"
+
+# Security Configuration
+jwt_secret = "your-super-secret-jwt-key-change-in-production"
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."
+
+# Tags
+common_tags = {
+  Environment = "production"
+  Project     = "base44-test-management"
+  ManagedBy   = "terraform"
+}

@@ -15,9 +15,45 @@ export default function Register() {
     setLoading(true);
     setError('');
     try {
-      await apiClient.register(email, password);
-      setSuccess(true);
-      setTimeout(() => navigate('/Login'), 1500);
+      const response = await apiClient.register(email, password);
+      
+      // If registration is successful and includes team data, store it
+      if (response.team) {
+        localStorage.setItem('teams', JSON.stringify([response.team]));
+        localStorage.setItem('activeTeamId', response.team.id);
+        console.log('[Register] Default team created and stored:', response.team);
+      }
+      
+      // Auto-login after successful registration
+      try {
+        const loginResponse = await apiClient.login(email, password);
+        localStorage.setItem('token', loginResponse.token);
+        localStorage.setItem('user', JSON.stringify({ email: loginResponse.email }));
+        
+        // Redirect to team dashboard
+        if (response.team) {
+          navigate(`/teams/${response.team.id}/dashboard`);
+        } else {
+          // Fallback: fetch teams and redirect
+          const teamsResponse = await fetch('http://localhost:4000/api/teams', {
+            headers: { Authorization: `Bearer ${loginResponse.token}` }
+          });
+          const teamsData = await teamsResponse.json();
+          
+          if (teamsData.teams && teamsData.teams.length > 0) {
+            const teamId = teamsData.teams[0].id;
+            localStorage.setItem('teams', JSON.stringify(teamsData.teams));
+            localStorage.setItem('activeTeamId', teamId);
+            navigate(`/teams/${teamId}/dashboard`);
+          } else {
+            navigate('/');
+          }
+        }
+      } catch (loginErr) {
+        console.error('Auto-login failed:', loginErr);
+        setSuccess(true);
+        setTimeout(() => navigate('/Login'), 1500);
+      }
     } catch (err) {
       setError('Registration failed. User may already exist.');
     } finally {

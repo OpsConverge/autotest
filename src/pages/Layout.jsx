@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { 
   LayoutDashboard, 
@@ -14,7 +14,8 @@ import {
   Bell,
   Zap, // Added Zap icon
   AlertTriangle, // Added AlertTriangle icon for Flakiness
-  Calendar // Added Calendar icon for TestScheduling
+  Calendar, // Added Calendar icon for TestScheduling
+  LogOut // Added LogOut icon
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTeam } from "@/context/TeamContext";
 
 const navigationItems = [
   {
@@ -83,6 +85,8 @@ const navigationItems = [
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout, activeTeam, setActiveTeam, teams, setTeams } = useTeam();
 
   return (
     <SidebarProvider>
@@ -207,15 +211,48 @@ export default function Layout({ children, currentPageName }) {
           <SidebarFooter className="border-t border-slate-200/60 p-4">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-gradient-to-br from-slate-400 to-slate-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">T</span>
+                <span className="text-white font-semibold text-sm">
+                  {activeTeam?.name?.charAt(0) || 'T'}
+                </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-900 text-sm truncate">Team Alpha</p>
-                <p className="text-xs text-slate-500 truncate">Premium Plan</p>
+                <p className="font-semibold text-slate-900 text-sm truncate">
+                  {activeTeam?.name || 'Team Alpha'}
+                </p>
+                <p className="text-xs text-slate-500 truncate">
+                  {(() => {
+                    try {
+                      const userData = localStorage.getItem('user');
+                      if (!userData) return '';
+                      
+                      // Check if it's a JSON object or just a string (for backward compatibility)
+                      if (userData.startsWith('{')) {
+                        const parsed = JSON.parse(userData);
+                        return parsed.email || '';
+                      } else {
+                        // If it's just a string (email), return it directly
+                        return userData;
+                      }
+                    } catch {
+                      return '';
+                    }
+                  })()}
+                </p>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100">
-                <Bell className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-100">
+                  <Bell className="w-4 h-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                  onClick={logout}
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </SidebarFooter>
         </Sidebar>
@@ -223,13 +260,24 @@ export default function Layout({ children, currentPageName }) {
         <main className="flex-1 flex flex-col min-w-0">
           {/* Mobile Header */}
           <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-4 py-3">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200">
-                <Menu className="w-5 h-5" />
-              </SidebarTrigger>
-              <h1 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                TestFlow
-              </h1>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200">
+                  <Menu className="w-5 h-5" />
+                </SidebarTrigger>
+                <h1 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                  TestFlow
+                </h1>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                onClick={logout}
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </header>
 

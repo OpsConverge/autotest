@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://base44_user:${POSTGRES_PASSWORD}@localhost:5432/base44_test_management
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: 4000
+    networks:
+      - base44-network
+    restart: unless-stopped
+
+  # Frontend React App
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:4000/api}
+      NODE_ENV: production
+    depends_on:
+      - backend
+    networks:
+      - base44-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - base44-network
+    restart: unless-stopped
+
+networks:
+  base44-network:
+    driver: bridge

@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (local installation)
+  postgres:
+    image: postgres:15-alpine
+    container_name: base44-postgres
+    environment:
+      POSTGRES_DB: base44_test_management
+      POSTGRES_USER: base44_user
+      POSTGRES_PASSWORD: base44_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U base44_user -d base44_test_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - base44-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: base44-backend
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://base44_user:base44_password@postgres:5432/base44_test_management
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      PORT: 4000
+      # GitHub OAuth Configuration (replace with your actual values)
+      GITHUB_CLIENT_ID: your_github_client_id
+      GITHUB_CLIENT_SECRET: your_github_client_secret
+      GITHUB_CALLBACK_URL: http://localhost:4000/api/github/callback
+      TEAM_GITHUB_CALLBACK_URL: http://localhost:4000/api/teams/callback/github
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm start
+    networks:
+      - base44-network
+
+  # Frontend React App
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: base44-frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:4000/api
+      NODE_ENV: development
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+    networks:
+      - base44-network
+
+volumes:
+  postgres_data:
+
+networks:
+  base44-network:
+    driver: bridge
