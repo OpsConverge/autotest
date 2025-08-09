@@ -20,17 +20,23 @@ ENV NODE_ENV=production
 # Build the application
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
+# Production stage - use a simple HTTP server
+FROM node:18-alpine
+
+# Install a simple HTTP server
+RUN npm install -g serve
 
 # Copy built application from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/dist /app
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Set working directory
+WORKDIR /app
 
-# Expose port 80
-EXPOSE 80
+# Expose port 3000
+EXPOSE 3000
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start the HTTP server
+CMD ["serve", "-s", ".", "-l", "3000"]
+#CMD ["serve", "-s", ".", "-l", "0.0.0.0 3000"]
+#CMD ["serve", "-s", ".", "-l", "3000", "--listen", "0.0.0.0"]
+

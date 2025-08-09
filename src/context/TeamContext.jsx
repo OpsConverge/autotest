@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getApiUrl } from "@/utils";
 
 const TeamContext = createContext();
 
@@ -11,7 +12,7 @@ export function TeamProvider({ children }) {
   const fetchTeams = async () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:4000/api/teams', {
+    const res = await fetch(getApiUrl('teams'), {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.ok) {

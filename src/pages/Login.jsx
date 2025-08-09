@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { apiClient } from '../api/base44Client';
 import { useNavigate } from 'react-router-dom';
+import { getApiUrl } from '@/utils';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -22,7 +23,7 @@ export default function Login() {
       
       // Always fetch teams from API to ensure we have the latest data
       try {
-        const response = await fetch('http://localhost:4000/api/teams', {
+        const response = await fetch(getApiUrl('teams'), {
           headers: { Authorization: `Bearer ${res.token}` }
         });
         

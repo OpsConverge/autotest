@@ -17,6 +17,11 @@ app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:5173'], crede
 app.options('*', cors({ origin: ['http://localhost:3000', 'http://localhost:5173'], credentials: true }));
 app.use(bodyParser.json());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Helper to get user email from JWT or request
 function getUserEmail(req) {
   // Try to get from Authorization header (Bearer token)
@@ -106,6 +111,7 @@ app.post('/api/auth/login', async (req, res) => {
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Ov23lilHj2BK7xYltHSf';
 const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '39ff7a09ab52f50714fba70fbb2965aad0e12309';
 const CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || 'http://localhost:4000/api/github/callback';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Step 1: Redirect to GitHub OAuth
 app.get('/api/github/login', (req, res) => {
@@ -146,7 +152,7 @@ app.get('/api/github/callback', async (req, res) => {
     if (!teamSettings[email]) teamSettings[email] = {};
     if (!teamSettings[email].github_config) teamSettings[email].github_config = {};
     teamSettings[email].github_config.is_connected = true;
-    res.redirect(`http://localhost:5173/Integrations?github=connected&email=${encodeURIComponent(email)}`);
+    res.redirect(`${FRONTEND_URL}/teams/1/integrations?github=connected&email=${encodeURIComponent(email)}`);
   } catch (err) {
     res.status(500).send('GitHub OAuth failed');
   }
@@ -688,7 +694,7 @@ app.get('/api/teams/callback/github', async (req, res) => {
       const newSettings = { ...settings.settings, github_config: { ...(settings.settings.github_config || {}), is_connected: true } };
       await prisma.teamSettings.update({ where: { teamId: Number(teamId) }, data: { settings: newSettings } });
     }
-    res.redirect(`http://localhost:5173/teams/${teamId}/integrations?github=connected`);
+    res.redirect(`${FRONTEND_URL}/teams/${teamId}/integrations?github=connected`);
   } catch (err) {
     res.status(500).send('GitHub OAuth failed');
   }

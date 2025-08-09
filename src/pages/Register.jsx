@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { apiClient } from '../api/base44Client';
 import { useNavigate } from 'react-router-dom';
+import { getApiUrl } from '@/utils';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -35,7 +36,7 @@ export default function Register() {
           navigate(`/teams/${response.team.id}/dashboard`);
         } else {
           // Fallback: fetch teams and redirect
-          const teamsResponse = await fetch('http://localhost:4000/api/teams', {
+          const teamsResponse = await fetch(getApiUrl('teams'), {
             headers: { Authorization: `Bearer ${loginResponse.token}` }
           });
           const teamsData = await teamsResponse.json();

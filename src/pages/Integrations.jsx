@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { TeamSettings, GitHubIntegration } from "@/api/entities";
 import { useTeam } from "../context/TeamContext";
+import { getApiUrl } from "@/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,11 +46,53 @@ export default function Integrations() {
   const [workflows, setWorkflows] = useState([]);
   const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(false);
   const [githubUser, setGithubUser] = useState(null);
+  
+  // Add GitHub status state
+  const [githubStatus, setGithubStatus] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   useEffect(() => {
     if (!activeTeam) return;
     loadSettings();
+    fetchGitHubStatus(); // Add GitHub status fetching
   }, [activeTeam]);
+
+  // Add GitHub status fetching function
+  const fetchGitHubStatus = async () => {
+    if (!activeTeam) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const token = localStorage.getItem('token');
+      console.log('=== fetchGitHubStatus called ==='); // Debug log
+      console.log('activeTeam:', activeTeam); // Debug log
+      console.log('Token exists:', !!token); // Debug token
+      
+      const response = await fetch(getApiUrl(`teams/${activeTeam.id}/github/status`), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const status = await response.json();
+        console.log('GitHub status:', status); // Debug log
+        console.log('isConnected:', status.isConnected); // Debug log
+        console.log('hasToken:', status.hasToken); // Debug log
+        setGithubStatus(status);
+      } else {
+        console.error('Failed to fetch GitHub status, response:', response.status, response.statusText); // Debug log
+        setError('Failed to fetch GitHub status');
+      }
+    } catch (err) {
+      console.error('Error fetching GitHub status:', err); // Debug log
+      setError('Failed to fetch GitHub status');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadSettings = async () => {
     setIsLoading(true);
@@ -98,59 +141,132 @@ export default function Integrations() {
   };
 
   const updateJiraConfig = (config) => {
-    updateSettings({
+    setSettings(prev => ({
+      ...prev,
       jira_config: {
-        ...(settings?.jira_config || {}),
+        ...(prev?.jira_config || {}),
         ...config
       }
-    });
+    }));
   };
 
   const addGitHubRepo = async (repo) => {
     const existingRepos = settings?.github_config?.repositories || [];
-    const newRepo = {
-      ...repo,
-      last_sync_status: 'ok', // Added for new app flow
-      last_sync_time: new Date().toISOString() // Added for new app flow
-    };
-    const updatedRepos = [...existingRepos, newRepo];
+    const updatedRepos = [...existingRepos, repo];
     
+    // Update local state
     updateGithubConfig({
       repositories: updatedRepos
     });
-
-    // Persist to backend
+    
+    // Auto-save to backend
     try {
-      await TeamSettings.update(settings.id, {
+      await TeamSettings.update(settings?.id, {
         ...settings,
         github_config: {
-          ...(settings.github_config || {}),
+          ...(settings?.github_config || {}),
           repositories: updatedRepos
         }
       });
-      // Optionally reload settings to ensure UI is in sync
-      loadSettings();
-    } catch (err) {
-      console.error('Failed to persist connected repos:', err);
+      setSuccess('Repository added successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (error) {
+      console.error('Error saving repository:', error);
+      setError('Failed to save repository');
+      // Revert local state on error
+      updateGithubConfig({
+        repositories: existingRepos
+      });
     }
-
+    
     setShowRepoSelector(false);
   };
 
-  const removeGitHubRepo = (repoId) => {
+  const removeGitHubRepo = async (repoId) => {
     const existingRepos = settings?.github_config?.repositories || [];
     const updatedRepos = existingRepos.filter(repo => repo.id !== repoId);
     
+    // Update local state
     updateGithubConfig({
       repositories: updatedRepos
     });
+    
+    // Auto-save to backend
+    try {
+      await TeamSettings.update(settings?.id, {
+        ...settings,
+        github_config: {
+          ...(settings?.github_config || {}),
+          repositories: updatedRepos
+        }
+      });
+      setSuccess('Repository removed successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (error) {
+      console.error('Error removing repository:', error);
+      setError('Failed to remove repository');
+      // Revert local state on error
+      updateGithubConfig({
+        repositories: existingRepos
+      });
+    }
   };
 
   const handleConnectGitHub = () => {
-    window.location.href = GitHubIntegration.githubLoginUrl();
+    if (!activeTeam) {
+      setError('No active team selected');
+      return;
+    }
+    
+    try {
+      const loginUrl = GitHubIntegration.githubLoginUrl();
+      console.log('Redirecting to GitHub OAuth:', loginUrl); // Debug log
+      window.location.href = loginUrl;
+    } catch (err) {
+      console.error('Error in handleConnectGitHub:', err); // Debug log
+      setError(err.message);
+    }
   };
 
-  const handleManualSync = (repoId) => {
+  const handleDisconnectGitHub = async () => {
+    if (!activeTeam) return;
+    
+    // Add confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to disconnect ${activeTeam.name} from GitHub? This will remove access to all connected repositories and workflows.`
+    );
+    
+    if (!confirmed) return;
+    
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(getApiUrl(`teams/${activeTeam.id}/github/disconnect`), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        setGithubStatus({ ...githubStatus, isConnected: false, hasToken: false });
+        updateGithubConfig({ is_connected: false, repositories: [] });
+        setSuccess('GitHub integration disconnected successfully');
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to disconnect GitHub');
+      }
+    } catch (err) {
+      setError('Failed to disconnect GitHub');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualSync = async (repoId) => {
     if (!settings?.github_config?.repositories) return;
 
     const updatedRepos = settings.github_config.repositories.map(repo => {
@@ -164,7 +280,24 @@ export default function Integrations() {
       return repo;
     });
 
+    // Update local state
     updateGithubConfig({ repositories: updatedRepos });
+    
+    // Auto-save to backend
+    try {
+      await TeamSettings.update(settings?.id, {
+        ...settings,
+        github_config: {
+          ...(settings?.github_config || {}),
+          repositories: updatedRepos
+        }
+      });
+      setSuccess('Repository synced successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (error) {
+      console.error('Error syncing repository:', error);
+      setError('Failed to sync repository');
+    }
   };
 
   const fetchGithubRepos = async () => {
@@ -196,7 +329,7 @@ export default function Integrations() {
         try {
           const teamId = activeTeam?.id || localStorage.getItem('activeTeamId');
           const token = localStorage.getItem('token');
-          const res = await fetch(`http://localhost:4000/api/teams/${teamId}/github/user`, {
+          const res = await fetch(getApiUrl(`teams/${teamId}/github/user`), {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (res.ok) {
@@ -303,27 +436,44 @@ export default function Integrations() {
               </div>
 
               <div className="p-6 rounded-lg border border-slate-200 bg-gradient-to-r from-gray-50 to-slate-50">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-slate-100">
-                      <Github className="w-5 h-5 text-slate-700" />
+                                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-slate-100">
+                        <Github className="w-5 h-5 text-slate-700" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-slate-900">GitHub</h4>
+                        <p className="text-sm text-slate-600">Integrate with GitHub Actions and repositories</p>
+                        {githubUser && (
+                          <div className="text-xs text-slate-500 mt-1">Connected as <span className="font-semibold">{githubUser.login}</span></div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-slate-900">GitHub</h4>
-                      <p className="text-sm text-slate-600">Integrate with GitHub Actions and repositories</p>
-                      {githubUser && (
-                        <div className="text-xs text-slate-500 mt-1">Connected as <span className="font-semibold">{githubUser.login}</span></div>
-                      )}
-                    </div>
+                                         <div className="flex items-center gap-2">
+                       {githubStatus?.permissions?.canManage && (
+                         <Badge className="bg-blue-100 text-blue-800 text-xs">
+                           {githubStatus.permissions.userRole}
+                         </Badge>
+                       )}
+                       <Badge className={githubStatus?.isConnected ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
+                         {githubStatus?.isConnected ? 'Connected' : 'Not Connected'}
+                       </Badge>
+                       {githubStatus?.isConnected && githubStatus?.permissions?.canManage && (
+                         <Button 
+                           variant="outline" 
+                           size="sm" 
+                           onClick={handleDisconnectGitHub}
+                           disabled={loading}
+                           className="text-red-600 hover:text-red-800 border-red-300 text-xs"
+                         >
+                           {loading ? 'Disconnecting...' : 'Disconnect'}
+                         </Button>
+                       )}
+                     </div>
                   </div>
-                  {/* Updated badge condition */}
-                  <Badge className={settings?.github_config?.is_connected ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
-                    {settings?.github_config?.is_connected ? 'Connected' : 'Not Connected'}
-                  </Badge>
-                </div>
-                
-                {/* Conditional rendering based on GitHub connection status */}
-                {settings?.github_config?.is_connected ? (
+                  
+                  {/* Conditional rendering based on GitHub connection status */}
+                  {githubStatus?.isConnected ? (
                   <div className="space-y-4">
                     <div>
                       <div className="flex items-center justify-between mb-3">
@@ -416,10 +566,30 @@ export default function Integrations() {
                     <p className="text-slate-600 mb-6 max-w-md mx-auto">
                       Install the TestFlow GitHub App to enable automatic status checks, repository browsing, and CI/CD integration.
                     </p>
-                    <Button onClick={handleConnectGitHub} className="bg-slate-900 hover:bg-slate-800 text-white">
-                      <Github className="w-4 h-4 mr-2" />
-                      Connect GitHub Account
-                    </Button>
+                    {githubStatus?.permissions?.canManage ? (
+                      <Button onClick={handleConnectGitHub} className="bg-slate-900 hover:bg-slate-800 text-white">
+                        <Github className="w-4 h-4 mr-2" />
+                        Connect GitHub Account
+                      </Button>
+                    ) : (
+                      <div className="text-sm text-slate-500">
+                        Only team owners and admins can manage GitHub integration
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                
+                
+                {/* Error and Success Messages */}
+                {error && (
+                  <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                    <div className="text-sm text-red-800">{error}</div>
+                  </div>
+                )}
+                {success && (
+                  <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="text-sm text-green-800">{success}</div>
                   </div>
                 )}
               </div>

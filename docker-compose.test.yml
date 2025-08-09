@@ -1,75 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database for Production
-  postgres-prod:
-    image: postgres:15-alpine
-    container_name: autotest-postgres-prod
-    environment:
-      POSTGRES_DB: autotest_production
-      POSTGRES_USER: autotest_prod_user
-      POSTGRES_PASSWORD: ${POSTGRES_PROD_PASSWORD:-autotest_prod_password}
-    volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-      - ./backend/migrations:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U autotest_prod_user -d autotest_production"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - autotest-prod-network
-    profiles: ["prod"]
-
-  # Backend API for Production
-  backend-prod:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: autotest-backend-prod
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://autotest_prod_user:${POSTGRES_PROD_PASSWORD:-autotest_prod_password}@postgres-prod:5432/autotest_production
-      JWT_SECRET: ${JWT_SECRET:-9f2b1c4a0e2f67d4aefb5b6a9b3f1c8d2e3f7a9b0c1d2e3f4a5b6c7d8e9f0a1b}
-      PORT: 4000
-      # GitHub OAuth Configuration
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
-      GITHUB_CALLBACK_URL: ${FRONTEND_URL}/api/github/callback
-      TEAM_GITHUB_CALLBACK_URL: ${FRONTEND_URL}/api/teams/callback/github
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-    ports:
-      - "4000:4000"
-    depends_on:
-      postgres-prod:
-        condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    command: ./start.sh
-    networks:
-      - autotest-prod-network
-    profiles: ["prod"]
-
-  # Frontend React App for Production
-  frontend-prod:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: autotest-frontend-prod
-    environment:
-      REACT_APP_API_URL: http://backend-prod:4000/api
-      NODE_ENV: production
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend-prod
-    networks:
-      - autotest-prod-network
-    profiles: ["prod"]
-
   # PostgreSQL Database for Test Environment
   postgres-test:
     image: postgres:15-alpine
@@ -90,7 +21,6 @@ services:
       retries: 5
     networks:
       - autotest-test-network
-    profiles: ["test"]
 
   # Backend API for Test Environment
   backend-test:
@@ -120,7 +50,6 @@ services:
     command: ./start.sh
     networks:
       - autotest-test-network
-    profiles: ["test"]
 
   # Frontend React App for Test Environment
   frontend-test:
@@ -137,14 +66,10 @@ services:
       - backend-test
     networks:
       - autotest-test-network
-    profiles: ["test"]
 
 volumes:
-  postgres_prod_data:
   postgres_test_data:
 
 networks:
-  autotest-prod-network:
-    driver: bridge
   autotest-test-network:
     driver: bridge
