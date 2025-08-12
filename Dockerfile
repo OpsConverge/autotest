@@ -1,42 +1,66 @@
-# Multi-stage build for React frontend
-FROM node:18 AS builder
+# Multi-stage build for production
+FROM node:18-alpine AS base
 
-# Set working directory
+# Install dependencies only when needed
+FROM base AS deps
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY backend/package*.json ./
+COPY backend/prisma ./prisma/
 
-# Install dependencies with legacy peer deps
-RUN npm ci --legacy-peer-deps
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
 
-# Copy source code
-COPY . .
-
-# Set environment variables to handle rollup issues
-ENV ROLLUP_SKIP_NATIVE=true
-ENV NODE_ENV=production
-
-# Build the application
-RUN npm run build
-
-# Production stage - use a simple HTTP server
-FROM node:18-alpine
-
-# Install a simple HTTP server
-RUN npm install -g serve
-
-# Copy built application from builder stage
-COPY --from=builder /app/dist /app
-
-# Set working directory
+# Rebuild the source code only when needed
+FROM base AS builder
 WORKDIR /app
 
-# Expose port 3000
-EXPOSE 3000
+# Copy package files
+COPY backend/package*.json ./
+COPY backend/prisma ./prisma/
 
-# Start the HTTP server
-CMD ["serve", "-s", ".", "-l", "3000"]
-#CMD ["serve", "-s", ".", "-l", "0.0.0.0 3000"]
-#CMD ["serve", "-s", ".", "-l", "3000", "--listen", "0.0.0.0"]
+# Install all dependencies (including dev dependencies)
+RUN npm ci
+
+# Copy source code
+COPY backend/ ./
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Production image, copy all the files and run the app
+FROM base AS runner
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nodejs
+
+# Copy built application
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/index.js ./
+COPY --from=builder /app/config ./config
+COPY --from=builder /app/utils ./utils
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/auth.js ./
+COPY --from=builder /app/middleware ./middleware
+
+# Set ownership
+RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose port
+EXPOSE 4000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:4000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+
+# Start the application
+CMD ["node", "index.js"]
 

@@ -4,44 +4,50 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "project_name" {
-  description = "Name of the project"
+variable "ssh_public_key_path" {
+  description = "Path to SSH public key file"
   type        = string
-  default     = "base44-test-management"
+  default     = "~/.ssh/id_rsa.pub"
 }
 
-variable "vpc_cidr" {
-  description = "CIDR block for VPC"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
-variable "availability_zones" {
-  description = "Availability zones"
+variable "allowed_ssh_cidr" {
+  description = "CIDR blocks allowed for SSH access to production"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
+  default     = ["0.0.0.0/0"]  # Change this to your IP for production
 }
 
-variable "private_subnet_cidrs" {
-  description = "CIDR blocks for private subnets"
-  type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24"]
-}
-
-variable "public_subnet_cidrs" {
-  description = "CIDR blocks for public subnets"
-  type        = list(string)
-  default     = ["10.0.101.0/24", "10.0.102.0/24"]
-}
-
-variable "ec2_instance_type" {
-  description = "EC2 instance type"
+variable "test_instance_type" {
+  description = "EC2 instance type for test environment"
   type        = string
   default     = "t3.medium"
 }
 
-variable "database_password" {
-  description = "Database password for PostgreSQL"
+variable "prod_instance_type" {
+  description = "EC2 instance type for production environment"
+  type        = string
+  default     = "t3.large"
+}
+
+variable "test_domain_name" {
+  description = "Domain name for test environment"
+  type        = string
+  default     = "test.yourdomain.com"
+}
+
+variable "prod_domain_name" {
+  description = "Domain name for production environment"
+  type        = string
+  default     = "yourdomain.com"
+}
+
+variable "prod_db_instance_class" {
+  description = "RDS instance class for production database"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "db_password" {
+  description = "Database password"
   type        = string
   sensitive   = true
 }
@@ -52,17 +58,15 @@ variable "jwt_secret" {
   sensitive   = true
 }
 
-variable "ssh_public_key" {
-  description = "SSH public key for EC2 access"
+variable "github_client_id" {
+  description = "GitHub OAuth client ID"
   type        = string
+  default     = ""
 }
 
-variable "common_tags" {
-  description = "Common tags for all resources"
-  type        = map(string)
-  default = {
-    Environment = "production"
-    Project     = "base44-test-management"
-    ManagedBy   = "terraform"
-  }
+variable "github_client_secret" {
+  description = "GitHub OAuth client secret"
+  type        = string
+  sensitive   = true
+  default     = ""
 }

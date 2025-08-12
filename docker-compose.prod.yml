@@ -1,75 +1,88 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database for Production
-  postgres-prod:
+  # PostgreSQL Database
+  postgres:
     image: postgres:15-alpine
     container_name: autotest-postgres-prod
     environment:
-      POSTGRES_DB: autotest_production
-      POSTGRES_USER: autotest_prod_user
-      POSTGRES_PASSWORD: ${POSTGRES_PROD_PASSWORD:-autotest_prod_password}
+      POSTGRES_DB: autotest_prod
+      POSTGRES_USER: autotest_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-      - ./backend/migrations:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - autotest-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U autotest_prod_user -d autotest_production"]
+      test: ["CMD-SHELL", "pg_isready -U autotest_user -d autotest_prod"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - autotest-prod-network
+    restart: unless-stopped
 
-  # Backend API for Production
-  backend-prod:
+  # Backend API
+  backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: autotest-backend-prod
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://autotest_prod_user:${POSTGRES_PROD_PASSWORD:-autotest_prod_password}@postgres-prod:5432/autotest_production
-      JWT_SECRET: ${JWT_SECRET:-9f2b1c4a0e2f67d4aefb5b6a9b3f1c8d2e3f7a9b0c1d2e3f4a5b6c7d8e9f0a1b}
+      DATABASE_URL: postgresql://autotest_user:${POSTGRES_PASSWORD}@postgres:5432/autotest_prod
+      JWT_SECRET: ${JWT_SECRET}
       PORT: 4000
-      # GitHub OAuth Configuration
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
-      GITHUB_CALLBACK_URL: ${FRONTEND_URL}/api/github/callback
-      TEAM_GITHUB_CALLBACK_URL: ${FRONTEND_URL}/api/teams/callback/github
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-    ports:
-      - "4000:4000"
+      # Production environment specific settings
+      PROD_BASE_URL: ${PROD_BASE_URL:-https://yourdomain.com}
+      PROD_API_URL: ${PROD_API_URL:-https://yourdomain.com/api}
+      PROD_TARGET_URL: ${PROD_TARGET_URL:-https://yourdomain.com}
+      PROD_ADMIN_EMAIL: ${PROD_ADMIN_EMAIL:-admin@yourdomain.com}
+      PROD_ADMIN_PASSWORD: ${PROD_ADMIN_PASSWORD}
+      PROD_USER_EMAIL: ${PROD_USER_EMAIL:-user@yourdomain.com}
+      PROD_USER_PASSWORD: ${PROD_USER_PASSWORD}
     depends_on:
-      postgres-prod:
+      postgres:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    command: ./start.sh
     networks:
-      - autotest-prod-network
+      - autotest-network
+    volumes:
+      - ./backend/logs:/app/logs
+    restart: unless-stopped
 
-  # Frontend React App for Production
-  frontend-prod:
+  # Frontend
+  frontend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.frontend
     container_name: autotest-frontend-prod
     environment:
-      REACT_APP_API_URL: http://backend-prod:4000/api
       NODE_ENV: production
-    ports:
-      - "3000:3000"
+      VITE_API_URL: ${PROD_API_URL:-https://yourdomain.com/api}
     depends_on:
-      - backend-prod
+      - backend
     networks:
-      - autotest-prod-network
+      - autotest-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: autotest-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - autotest-network
+    restart: unless-stopped
 
 volumes:
-  postgres_prod_data:
+  postgres_data:
 
 networks:
-  autotest-prod-network:
+  autotest-network:
     driver: bridge

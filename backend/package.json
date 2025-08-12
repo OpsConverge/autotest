@@ -5,6 +5,10 @@
   "license": "MIT",
   "scripts": {
     "start": "node index.js",
+    "migrate": "node scripts/migrate.js",
+    "init-db": "node scripts/init-db.js",
+    "reset-db": "node scripts/init-db.js --reset",
+    "seed": "node scripts/seed.js",
     "test:dev": "node scripts/run-tests.js development",
     "test:test": "node scripts/run-tests.js test",
     "test:staging": "node scripts/run-tests.js staging",
