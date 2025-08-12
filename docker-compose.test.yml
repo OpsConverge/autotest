@@ -41,6 +41,8 @@ services:
       TEST_ADMIN_PASSWORD: ${TEST_ADMIN_PASSWORD:-admin123}
       TEST_USER_EMAIL: ${TEST_USER_EMAIL:-user@test.yourdomain.com}
       TEST_USER_PASSWORD: ${TEST_USER_PASSWORD:-user123}
+      # Frontend URL for redirects
+      FRONTEND_URL: ${FRONTEND_URL:-http://52.15.90.92:8081}
       # GitHub Integration
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-Ov23lidDKVDADYutp3B7}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
