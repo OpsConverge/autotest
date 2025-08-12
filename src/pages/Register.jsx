@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { apiClient } from '../api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { getApiUrl } from '@/utils';
+import { useTeam } from '../context/TeamContext';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -10,6 +11,7 @@ export default function Register() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { refreshTeams } = useTeam();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,6 +35,8 @@ export default function Register() {
         
         // Redirect to team dashboard
         if (response.team) {
+          // Trigger team refresh to ensure TeamContext is updated
+          refreshTeams();
           navigate(`/teams/${response.team.id}/dashboard`);
         } else {
           // Fallback: fetch teams and redirect
@@ -45,6 +49,8 @@ export default function Register() {
             const teamId = teamsData.teams[0].id;
             localStorage.setItem('teams', JSON.stringify(teamsData.teams));
             localStorage.setItem('activeTeamId', teamId);
+            // Trigger team refresh to ensure TeamContext is updated
+            refreshTeams();
             navigate(`/teams/${teamId}/dashboard`);
           } else {
             navigate('/');

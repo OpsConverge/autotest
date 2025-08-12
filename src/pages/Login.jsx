@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { apiClient } from '../api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { getApiUrl } from '@/utils';
+import { useTeam } from '../context/TeamContext';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { refreshTeams } = useTeam();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,6 +39,8 @@ export default function Login() {
             localStorage.setItem('activeTeamId', teamId);
             
             console.log('[Login] Redirecting to team dashboard:', teamId);
+            // Trigger team refresh to ensure TeamContext is updated
+            refreshTeams();
             navigate(`/teams/${teamId}/dashboard`);
           } else {
             console.log('[Login] No teams found, redirecting to landing page');

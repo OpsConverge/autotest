@@ -15,7 +15,8 @@ import {
   Zap, // Added Zap icon
   AlertTriangle, // Added AlertTriangle icon for Flakiness
   Calendar, // Added Calendar icon for TestScheduling
-  LogOut // Added LogOut icon
+  LogOut, // Added LogOut icon
+  Terminal // Added Terminal icon for Debug
 } from "lucide-react";
 import {
   Sidebar,
@@ -80,6 +81,11 @@ const navigationItems = [
     title: "Settings",
     url: createPageUrl("Settings"),
     icon: Settings,
+  },
+  {
+    title: "Debug",
+    url: createPageUrl("Debug"),
+    icon: Terminal,
   },
 ];
 

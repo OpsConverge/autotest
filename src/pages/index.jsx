@@ -8,6 +8,7 @@ import Settings from "./Settings";
 import Integrations from "./Integrations";
 import Flakiness from "./Flakiness";
 import TestScheduling from "./TestScheduling";
+import Debug from "./Debug";
 import Login from "./Login";
 import Register from "./Register";
 import LandingPage from "./landing";
@@ -23,6 +24,7 @@ const PAGES = {
     Integrations: Integrations,
     Flakiness: Flakiness,
     TestScheduling: TestScheduling,
+    Debug: Debug,
 }
 
 function _getCurrentPage(url) {
@@ -47,6 +49,7 @@ function RequireAuth({ children }) {
 
 function TeamRedirect({ to }) {
     const teamId = localStorage.getItem('activeTeamId') || '1';
+    console.log('[TeamRedirect] Redirecting to:', to, 'with teamId:', teamId);
     return <Navigate to={`/teams/${teamId}/${to}`} replace />;
 }
 
@@ -91,6 +94,7 @@ function PagesContent() {
                                 <Route path="integrations" element={<Integrations />} />
                                 <Route path="flakiness" element={<Flakiness />} />
                                 <Route path="testscheduling" element={<TestScheduling />} />
+                                <Route path="debug" element={<Debug />} />
                             </Routes>
                         </Layout>
                     </RequireAuth>
@@ -167,6 +171,14 @@ function PagesContent() {
                 element={
                     <RequireAuth>
                         <TeamRedirect to="testscheduling" />
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/debug"
+                element={
+                    <RequireAuth>
+                        <TeamRedirect to="debug" />
                     </RequireAuth>
                 }
             />

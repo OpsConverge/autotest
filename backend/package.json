@@ -4,7 +4,12 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test:dev": "node scripts/run-tests.js development",
+    "test:test": "node scripts/run-tests.js test",
+    "test:staging": "node scripts/run-tests.js staging",
+    "test:prod": "node scripts/run-tests.js production",
+    "test:all": "npm run test:dev && npm run test:test && npm run test:staging && npm run test:prod"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",

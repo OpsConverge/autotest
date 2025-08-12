@@ -74,6 +74,22 @@ app.post('/api/auth/register', async (req, res) => {
     });
     console.log('[POST /api/auth/register] User assigned as owner to default team');
     
+    // Create default team settings
+    await prisma.teamSettings.create({
+      data: {
+        teamId: defaultTeam.id,
+        settings: {
+          team_name: defaultTeam.name,
+          slack_webhook: '',
+          jira_config: { url: '', project_key: '', api_token: '' },
+          github_config: { is_connected: false, repositories: [] },
+          notification_preferences: { failed_tests: true, flaky_tests: true, coverage_drops: true },
+          flaky_threshold: 70
+        }
+      }
+    });
+    console.log('[POST /api/auth/register] Default team settings created');
+    
     return res.json({ 
       success: true, 
       user: { id: user.id, email: user.email },
@@ -209,12 +225,17 @@ app.post('/api/teams', requireAuth, async (req, res) => {
 // List teams for current user
 app.get('/api/teams', requireAuth, async (req, res) => {
   try {
+    console.log('[GET /api/teams] User ID:', req.user.id);
     const teams = await prisma.teamMember.findMany({
       where: { userId: req.user.id },
       include: { team: true }
     });
-    return res.json({ teams: teams.map(tm => ({ ...tm.team, role: tm.role })) });
+    console.log('[GET /api/teams] Found team members:', teams);
+    const result = { teams: teams.map(tm => ({ ...tm.team, role: tm.role })) };
+    console.log('[GET /api/teams] Returning teams:', result);
+    return res.json(result);
   } catch (err) {
+    console.error('[GET /api/teams] Error:', err);
     return res.status(500).json({ error: 'Failed to list teams' });
   }
 });

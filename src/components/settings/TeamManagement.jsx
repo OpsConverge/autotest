@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import TeamInviteModal from '../TeamInviteModal';
 import { useTeam } from '../../context/TeamContext';
+import { getApiUrl } from '@/utils';
 
 export default function TeamManagement({ settings, onUpdate }) {
   const { activeTeam, teams, setActiveTeam, setTeams, refreshTeams } = useTeam();
@@ -56,8 +57,12 @@ export default function TeamManagement({ settings, onUpdate }) {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/teams/${activeTeam.id}/members`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await fetch(getApiUrl(`teams/${activeTeam.id}/members`), {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       });
       if (response.ok) {
         const data = await response.json();
@@ -122,7 +127,7 @@ export default function TeamManagement({ settings, onUpdate }) {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/teams/${activeTeam.id}/name`, {
+      const response = await fetch(getApiUrl(`teams/${activeTeam.id}/name`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -174,7 +179,7 @@ export default function TeamManagement({ settings, onUpdate }) {
     try {
       const token = localStorage.getItem('token');
       // First, we need to get the user ID from the email
-      const userResponse = await fetch(`http://localhost:4000/api/users/by-email/${encodeURIComponent(memberEmail)}`, {
+      const userResponse = await fetch(getApiUrl(`users/by-email/${encodeURIComponent(memberEmail)}`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -184,7 +189,7 @@ export default function TeamManagement({ settings, onUpdate }) {
       
       const userData = await userResponse.json();
       
-      const response = await fetch(`http://localhost:4000/api/teams/${activeTeam.id}/members/${userData.user.id}/role`, {
+      const response = await fetch(getApiUrl(`teams/${activeTeam.id}/members/${userData.user.id}/role`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +220,7 @@ export default function TeamManagement({ settings, onUpdate }) {
     try {
       const token = localStorage.getItem('token');
       // First, we need to get the user ID from the email
-      const userResponse = await fetch(`http://localhost:4000/api/users/by-email/${encodeURIComponent(memberEmail)}`, {
+      const userResponse = await fetch(getApiUrl(`users/by-email/${encodeURIComponent(memberEmail)}`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -225,7 +230,7 @@ export default function TeamManagement({ settings, onUpdate }) {
       
       const userData = await userResponse.json();
       
-      const response = await fetch(`http://localhost:4000/api/teams/${activeTeam.id}/members/${userData.user.id}`, {
+      const response = await fetch(getApiUrl(`teams/${activeTeam.id}/members/${userData.user.id}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useTeam } from '../../context/TeamContext';
 import { GitHubIntegration } from '../../api/entities';
+import { getApiUrl } from '@/utils';
 
 export default function IntegrationSettings({ settings, onUpdate }) {
   const { activeTeam } = useTeam();
@@ -41,8 +42,12 @@ export default function IntegrationSettings({ settings, onUpdate }) {
       const token = localStorage.getItem('token');
       console.log('Token exists:', !!token); // Debug token
       
-      const response = await fetch(`http://localhost:4000/api/teams/${activeTeam.id}/github/status`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await fetch(getApiUrl(`teams/${activeTeam.id}/github/status`), {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       });
       
       if (response.ok) {
@@ -146,7 +151,7 @@ export default function IntegrationSettings({ settings, onUpdate }) {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/teams/${activeTeam.id}/github/disconnect`, {
+      const response = await fetch(getApiUrl(`teams/${activeTeam.id}/github/disconnect`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });

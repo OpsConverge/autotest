@@ -52,6 +52,9 @@ export default function Integrations() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  
+  console.log('[Integrations] Component rendered, activeTeam:', activeTeam);
+  console.log('[Integrations] localStorage.activeTeamId:', localStorage.getItem('activeTeamId'));
 
   useEffect(() => {
     if (!activeTeam) return;

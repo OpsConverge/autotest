@@ -1,4 +1,5 @@
 import { apiClient } from './base44Client';
+import { getApiUrl } from '@/utils';
 
 function getAuthHeaders() {
   const token = localStorage.getItem('token');
@@ -6,7 +7,9 @@ function getAuthHeaders() {
 }
 
 function getActiveTeamId() {
-  return localStorage.getItem('activeTeamId');
+  const teamId = localStorage.getItem('activeTeamId');
+  console.log('[getActiveTeamId] teamId from localStorage:', teamId);
+  return teamId;
 }
 
 export const GitHubIntegration = {
@@ -15,12 +18,12 @@ export const GitHubIntegration = {
     const token = localStorage.getItem('token');
     if (!teamId) throw new Error('No active team');
     if (!token) throw new Error('No auth token');
-    return `http://localhost:4000/api/teams/${teamId}/github/login?token=${encodeURIComponent(token)}`;
+    return `${getApiUrl(`teams/${teamId}/github/login`)}?token=${encodeURIComponent(token)}`;
   },
   async fetchRepos() {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/github/repos`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/github/repos`), {
       headers: { ...getAuthHeaders() }
     });
     if (!res.ok) throw new Error('Failed to fetch GitHub repos');
@@ -29,7 +32,7 @@ export const GitHubIntegration = {
   async fetchWorkflows(repoFullName) {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/github/workflows?repoFullName=${encodeURIComponent(repoFullName)}`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/github/workflows?repoFullName=${encodeURIComponent(repoFullName)}`), {
       headers: { ...getAuthHeaders() }
     });
     if (!res.ok) throw new Error('Failed to fetch workflows');
@@ -183,18 +186,25 @@ export const TestRun = {
 export const TeamSettings = {
   async list() {
     const teamId = getActiveTeamId();
+    console.log('[TeamSettings.list] teamId:', teamId);
     if (!teamId) throw new Error('No active team');
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/settings`, {
-      headers: { ...getAuthHeaders() }
+    const res = await fetch(getApiUrl(`teams/${teamId}/settings`), {
+      headers: { 
+        ...getAuthHeaders(),
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
     });
+    console.log('[TeamSettings.list] Response status:', res.status);
     if (!res.ok) throw new Error('Failed to load team settings');
     const data = await res.json();
+    console.log('[TeamSettings.list] Settings data:', data);
     return [data]; // for compatibility with existing code
   },
   async update(id, settings) {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/settings`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/settings`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ settings })

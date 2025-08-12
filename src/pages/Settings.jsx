@@ -26,19 +26,26 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState("general");
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [refreshMembers, setRefreshMembers] = useState(0);
+  
+  console.log('[Settings] Component rendered, activeTeam:', activeTeam);
+  console.log('[Settings] localStorage.activeTeamId:', localStorage.getItem('activeTeamId'));
 
   useEffect(() => {
-    loadSettings();
-    // eslint-disable-next-line
-  }, []);
+    if (activeTeam) {
+      loadSettings();
+    }
+  }, [activeTeam]);
 
   const loadSettings = async () => {
+    console.log('[Settings] Loading settings, activeTeam:', activeTeam);
     setIsLoading(true);
     try {
       const settingsData = await TeamSettings.list();
+      console.log('[Settings] Settings data received:', settingsData);
       if (settingsData.length > 0) {
         setSettings(settingsData[0]);
       } else {
+        console.log('[Settings] No settings found, creating default');
         // Create default settings
         const defaultSettings = {
           team_name: "Team Alpha",
