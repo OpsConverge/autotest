@@ -34,14 +34,16 @@ services:
       JWT_SECRET: ${JWT_SECRET:-test-jwt-secret-key}
       PORT: 4000
       # Test environment specific settings
-      TEST_BASE_URL: ${TEST_BASE_URL:-http://localhost:8081}
-      TEST_API_URL: ${TEST_API_URL:-http://localhost:8081/api}
-      TEST_TARGET_URL: ${TEST_TARGET_URL:-http://localhost:8081}
+      TEST_BASE_URL: ${TEST_BASE_URL:-http://52.15.90.92:8081}
+      TEST_API_URL: ${TEST_API_URL:-http://52.15.90.92:8081/api}
+      TEST_TARGET_URL: ${TEST_TARGET_URL:-http://52.15.90.92:8081}
       TEST_ADMIN_EMAIL: ${TEST_ADMIN_EMAIL:-admin@test.yourdomain.com}
       TEST_ADMIN_PASSWORD: ${TEST_ADMIN_PASSWORD:-admin123}
       TEST_USER_EMAIL: ${TEST_USER_EMAIL:-user@test.yourdomain.com}
       TEST_USER_PASSWORD: ${TEST_USER_PASSWORD:-user123}
       # GitHub Integration
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-Ov23lidDKVDADYutp3B7}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
       GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL:-http://52.15.90.92:8081/api/github/callback}
       TEAM_GITHUB_CALLBACK_URL: ${TEAM_GITHUB_CALLBACK_URL:-http://52.15.90.92:8081/api/teams/callback/github}
     ports:
