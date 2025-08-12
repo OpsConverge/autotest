@@ -26,6 +26,9 @@ RUN npm ci
 # Copy source code
 COPY backend/ ./
 
+# Create necessary directories if they don't exist
+RUN mkdir -p logs
+
 # Generate Prisma client
 RUN npx prisma generate
 
@@ -46,7 +49,10 @@ COPY --from=builder /app/config ./config
 COPY --from=builder /app/utils ./utils
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/auth.js ./
-COPY --from=builder /app/middleware ./middleware
+COPY --from=builder /app/db.js ./
+
+# Create logs directory
+RUN mkdir -p logs
 
 # Set ownership
 RUN chown -R nodejs:nodejs /app
