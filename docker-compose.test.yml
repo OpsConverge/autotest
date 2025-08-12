@@ -58,11 +58,11 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_URL: http://localhost:8081/api
+        VITE_API_URL: http://52.15.90.92:8081/api
     container_name: autotest-frontend-test
     environment:
       NODE_ENV: test
-      VITE_API_URL: http://localhost:8081/api
+      VITE_API_URL: http://52.15.90.92:8081/api
     ports:
       - "3000:3000"
     depends_on:
