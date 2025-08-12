@@ -41,6 +41,9 @@ services:
       TEST_ADMIN_PASSWORD: ${TEST_ADMIN_PASSWORD:-admin123}
       TEST_USER_EMAIL: ${TEST_USER_EMAIL:-user@test.yourdomain.com}
       TEST_USER_PASSWORD: ${TEST_USER_PASSWORD:-user123}
+      # GitHub Integration
+      GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL:-http://52.15.90.92:8081/api/github/callback}
+      TEAM_GITHUB_CALLBACK_URL: ${TEAM_GITHUB_CALLBACK_URL:-http://52.15.90.92:8081/api/teams/callback/github}
     ports:
       - "4000:4000"
     depends_on:
@@ -58,11 +61,11 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_URL: http://52.15.90.92:8081/api
+        VITE_API_URL: ${TEST_API_URL:-http://52.15.90.92:8081/api}
     container_name: autotest-frontend-test
     environment:
       NODE_ENV: test
-      VITE_API_URL: http://52.15.90.92:8081/api
+      VITE_API_URL: ${TEST_API_URL:-http://52.15.90.92:8081/api}
     ports:
       - "3000:3000"
     depends_on:
