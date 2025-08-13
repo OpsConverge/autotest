@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { apiClient } from '../api/base44Client';
+import { apiClient } from '../api/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { getApiUrl } from '@/utils';
 import { useTeam } from '../context/TeamContext';

@@ -1,4 +1,4 @@
-import { apiClient } from './base44Client';
+import { apiClient } from './apiClient';
 
 // Example placeholder exports for now
 export const Core = {};

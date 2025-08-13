@@ -4,7 +4,7 @@ import Login from '../../pages/Login'
 import Register from '../../pages/Register'
 
 // Mock the API calls
-vi.mock('../../api/base44Client', () => ({
+vi.mock('../../api/apiClient', () => ({
   login: vi.fn(),
   register: vi.fn(),
 }))
@@ -26,7 +26,7 @@ describe('Authentication Integration', () => {
 
   describe('Login Flow', () => {
     it('completes full login process', async () => {
-      const { login } = await import('../../api/base44Client')
+      const { login } = await import('../../api/apiClient')
       login.mockResolvedValue({
         token: 'mock-token',
         user: { id: 1, email: 'test@example.com', name: 'John Doe' }
@@ -65,7 +65,7 @@ describe('Authentication Integration', () => {
     })
 
     it('handles login API errors', async () => {
-      const { login } = await import('../../api/base44Client')
+      const { login } = await import('../../api/apiClient')
       login.mockRejectedValue(new Error('Invalid credentials'))
 
       render(<Login />)
@@ -86,7 +86,7 @@ describe('Authentication Integration', () => {
 
   describe('Register Flow', () => {
     it('completes full registration process', async () => {
-      const { register } = await import('../../api/base44Client')
+      const { register } = await import('../../api/apiClient')
       register.mockResolvedValue({
         token: 'mock-token',
         user: { id: 1, email: 'new@example.com', name: 'Jane Doe' }

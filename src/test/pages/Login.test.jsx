@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '../utils/test-utils'
 import Login from '../../pages/Login'
 
 // Mock the API calls
-vi.mock('../../api/base44Client', () => ({
+vi.mock('../../api/apiClient', () => ({
   login: vi.fn(),
 }))
 
@@ -55,7 +55,7 @@ describe('Login', () => {
   })
 
   it('submits form with valid data', async () => {
-    const { login } = await import('../../api/base44Client')
+    const { login } = await import('../../api/apiClient')
     login.mockResolvedValue({ token: 'mock-token' })
     
     render(<Login />)
@@ -74,7 +74,7 @@ describe('Login', () => {
   })
 
   it('shows error message on login failure', async () => {
-    const { login } = await import('../../api/base44Client')
+    const { login } = await import('../../api/apiClient')
     login.mockRejectedValue(new Error('Invalid credentials'))
     
     render(<Login />)

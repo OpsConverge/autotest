@@ -1,92 +1,128 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useMobile } from '../../hooks/use-mobile'
+import { useIsMobile } from '../../hooks/use-mobile'
 
-describe('useMobile', () => {
+// Mock window.matchMedia
+const mockMatchMedia = vi.fn()
+
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: mockMatchMedia,
+})
+
+describe('useIsMobile', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Reset window.innerWidth
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      value: 1024,
+    })
   })
 
   it('returns false for desktop screen size', () => {
-    // Mock window.innerWidth for desktop
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
-      configurable: true,
       value: 1024,
     })
 
-    const { result } = renderHook(() => useMobile())
+    mockMatchMedia.mockReturnValue({
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+
+    const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(false)
   })
 
   it('returns true for mobile screen size', () => {
-    // Mock window.innerWidth for mobile
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
-      configurable: true,
-      value: 768,
+      value: 375,
     })
 
-    const { result } = renderHook(() => useMobile())
+    mockMatchMedia.mockReturnValue({
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+
+    const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(true)
   })
 
   it('returns true for tablet screen size', () => {
-    // Mock window.innerWidth for tablet
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
-      configurable: true,
-      value: 900,
+      value: 768,
     })
 
-    const { result } = renderHook(() => useMobile())
+    mockMatchMedia.mockReturnValue({
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+
+    const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(true)
   })
 
   it('updates when window is resized', () => {
-    // Start with desktop size
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
-      configurable: true,
       value: 1024,
     })
 
-    const { result, rerender } = renderHook(() => useMobile())
-    expect(result.current).toBe(false)
+    const mockAddEventListener = vi.fn()
+    const mockRemoveEventListener = vi.fn()
 
-    // Change to mobile size
-    Object.defineProperty(window, 'innerWidth', {
-      writable: true,
-      configurable: true,
-      value: 768,
+    mockMatchMedia.mockReturnValue({
+      addEventListener: mockAddEventListener,
+      removeEventListener: mockRemoveEventListener,
     })
 
-    // Trigger resize event
-    window.dispatchEvent(new Event('resize'))
-    rerender()
+    const { result, rerender } = renderHook(() => useIsMobile())
+    expect(result.current).toBe(false)
 
+    // Simulate resize to mobile
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      value: 375,
+    })
+
+    // Trigger the change handler
+    const changeHandler = mockAddEventListener.mock.calls[0][1]
+    changeHandler()
+
+    rerender()
     expect(result.current).toBe(true)
   })
 
   it('handles edge case of exactly 768px width', () => {
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
-      configurable: true,
       value: 768,
     })
 
-    const { result } = renderHook(() => useMobile())
+    mockMatchMedia.mockReturnValue({
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+
+    const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(true)
   })
 
   it('handles edge case of exactly 1024px width', () => {
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
-      configurable: true,
       value: 1024,
     })
 
-    const { result } = renderHook(() => useMobile())
+    mockMatchMedia.mockReturnValue({
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+
+    const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(false)
   })
 })

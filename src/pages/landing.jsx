@@ -92,7 +92,7 @@ export default function LandingPage() {
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center">
                   <TestTube className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-2xl font-bold text-white tracking-tight">OpsConverge</span>
+                <span className="text-2xl font-bold text-white tracking-tight">Test Management</span>
               </a>
             </div>
             <div className="flex lg:flex-1 lg:justify-end">
@@ -121,7 +121,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.2 }}
             >
-              OpsConverge intelligently analyzes your test results and build data, providing actionable insights to ship faster and with more confidence.
+                Our platform intelligently analyzes your test results and build data, providing actionable insights to ship faster and with more confidence.
             </motion.p>
             <motion.div 
               className="mt-10 flex items-center justify-center gap-x-6"
@@ -214,7 +214,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-12 border-t border-gray-800">
         <div className="mx-auto max-w-7xl px-6 lg:px-8 text-center">
-          <p className="text-slate-400">&copy; {new Date().getFullYear()} OpsConverge. All rights reserved.</p>
+          <p className="text-slate-400">&copy; {new Date().getFullYear()} Test Management App. All rights reserved.</p>
         </div>
       </footer>
     </div>

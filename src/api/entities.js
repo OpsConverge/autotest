@@ -1,4 +1,4 @@
-import { apiClient } from './base44Client';
+import { apiClient } from './apiClient';
 import { getApiUrl } from '@/utils';
 
 function getAuthHeaders() {
