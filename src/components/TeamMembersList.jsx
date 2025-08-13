@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTeam } from '../context/TeamContext';
+import { getApiUrl } from '@/utils';
 
 export default function TeamMembersList({ refresh }) {
   const { activeTeam } = useTeam();
@@ -10,13 +11,18 @@ export default function TeamMembersList({ refresh }) {
     if (!activeTeam) return;
     setLoading(true);
     const token = localStorage.getItem('token');
-    const res = await fetch(`http://localhost:4000/api/teams/${activeTeam.id}/members`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setMembers(data.members);
-    } else {
+    try {
+      const res = await fetch(getApiUrl(`teams/${activeTeam.id}/members`), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMembers(data.members);
+      } else {
+        setMembers([]);
+      }
+    } catch (error) {
+      console.error('Error fetching team members:', error);
       setMembers([]);
     }
     setLoading(false);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { getApiUrl } from '@/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -644,7 +645,7 @@ export default function TestDetailsModal({
                                                         }
                                                         
                                                         // First, let's test if the token is valid by making a simple request
-                                                        const testResponse = await fetch('http://localhost:4000/api/teams', {
+                                                        const testResponse = await fetch(getApiUrl('teams'), {
                                                           headers: {
                                                             'Authorization': `Bearer ${token}`,
                                                             'Content-Type': 'application/json'
@@ -656,7 +657,7 @@ export default function TestDetailsModal({
                                                           return;
                                                         }
                                                         
-                                                        const response = await fetch(`http://localhost:4000/api/teams/5/debug-logs/${build.id}`, {
+                                                        const response = await fetch(getApiUrl(`teams/5/debug-logs/${build.id}`), {
                                                           headers: {
                                                             'Authorization': `Bearer ${token}`,
                                                             'Content-Type': 'application/json'
@@ -693,7 +694,7 @@ export default function TestDetailsModal({
                                                           return;
                                                         }
                                                         
-                                                        const response = await fetch(`http://localhost:4000/api/teams/5/reparse-tests/${build.id}`, {
+                                                        const response = await fetch(getApiUrl(`teams/5/reparse-tests/${build.id}`), {
                                                           method: 'POST',
                                                           headers: {
                                                             'Authorization': `Bearer ${token}`,
@@ -805,7 +806,7 @@ at Object.it (src/test.js:10:3)
                                                   <button
                                                     onClick={async () => {
                                                       try {
-                                                        const response = await fetch('http://localhost:4000/api/test-github-links');
+                                                        const response = await fetch(getApiUrl('test-github-links'));
                                                         const data = await response.json();
                                                         console.log('Test endpoint response:', data);
                                                         

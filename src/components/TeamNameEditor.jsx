@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Edit2, Check, X } from 'lucide-react';
+import { getApiUrl } from '@/utils';
 
 export default function TeamNameEditor({ teamName, teamId, userRole, onTeamNameUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -49,7 +50,7 @@ export default function TeamNameEditor({ teamName, teamId, userRole, onTeamNameU
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`http://localhost:4000/api/teams/${teamId}/name`, {
+      const response = await fetch(getApiUrl(`teams/${teamId}/name`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

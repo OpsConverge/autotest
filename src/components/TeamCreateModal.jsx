@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTeam } from '../context/TeamContext';
+import { getApiUrl } from '@/utils';
 
 export default function TeamCreateModal({ isOpen, onClose, onTeamCreated }) {
   const [name, setName] = useState('');
@@ -14,19 +15,24 @@ export default function TeamCreateModal({ isOpen, onClose, onTeamCreated }) {
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:4000/api/teams', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name })
-    });
-    if (res.ok) {
-      await refreshTeams();
-      setName('');
-      onTeamCreated && onTeamCreated();
-      onClose();
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error || 'Failed to create team');
+
+    try {
+      const res = await fetch(getApiUrl('teams'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name })
+      });
+      if (res.ok) {
+        await refreshTeams();
+        setName('');
+        onTeamCreated && onTeamCreated();
+        onClose();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to create team');
+      }
+    } catch (err) {
+      setError('Network error or server not responding');
     }
     setLoading(false);
   };

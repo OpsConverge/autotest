@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getApiUrl } from '@/utils';
 
 export default function TeamInviteModal({ isOpen, onClose, teamId, onInvited }) {
   const [email, setEmail] = useState('');
@@ -13,19 +14,24 @@ export default function TeamInviteModal({ isOpen, onClose, teamId, onInvited }) 
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/invite`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ email, password })
-    });
-    if (res.ok) {
-      setEmail('');
-      setPassword('');
-      onInvited && onInvited();
-      onClose();
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error || 'Failed to invite member');
+
+    try {
+      const res = await fetch(getApiUrl(`teams/${teamId}/invite`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ email, password })
+      });
+      if (res.ok) {
+        setEmail('');
+        setPassword('');
+        onInvited && onInvited();
+        onClose();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to invite member');
+      }
+    } catch (err) {
+      setError('Network error or server not responding');
     }
     setLoading(false);
   };

@@ -47,7 +47,7 @@ export const Release = {
     if (!teamId) throw new Error('No active team');
     if (!token) throw new Error('No auth token');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/releases`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/releases`), {
       headers: { ...getAuthHeaders() }
     });
     if (!res.ok) throw new Error('Failed to load releases');
@@ -62,7 +62,7 @@ export const Build = {
     if (!teamId) throw new Error('No active team');
     if (!token) throw new Error('No auth token');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/builds?limit=${limit}`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/builds?limit=${limit}`), {
       headers: { ...getAuthHeaders() }
     });
     if (!res.ok) throw new Error('Failed to load builds');
@@ -76,8 +76,8 @@ export const Build = {
     if (!token) throw new Error('No auth token');
     
     const url = repo 
-      ? `http://localhost:4000/api/teams/${teamId}/builds/by-releases?repo=${encodeURIComponent(repo)}`
-      : `http://localhost:4000/api/teams/${teamId}/builds/by-releases`;
+      ? getApiUrl(`teams/${teamId}/builds/by-releases?repo=${encodeURIComponent(repo)}`)
+      : getApiUrl(`teams/${teamId}/builds/by-releases`);
     
     const res = await fetch(url, {
       headers: { 
@@ -96,7 +96,7 @@ export const Build = {
     if (!teamId) throw new Error('No active team');
     if (!token) throw new Error('No auth token');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/builds`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/builds`), {
       method: 'POST',
       headers: { 
         ...getAuthHeaders(),
@@ -114,7 +114,7 @@ export const Build = {
     if (!teamId) throw new Error('No active team');
     if (!token) throw new Error('No auth token');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/repos/${encodeURIComponent(repoFullName)}/sync`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/repos/${encodeURIComponent(repoFullName)}/sync`), {
       method: 'POST',
       headers: { ...getAuthHeaders() }
     });
@@ -132,7 +132,7 @@ export const TestRun = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const url = `http://localhost:4000/api/teams/${teamId}/test-runs?sortBy=${encodeURIComponent(sortBy)}&limit=${limit}`;
+    const url = getApiUrl(`teams/${teamId}/test-runs?sortBy=${encodeURIComponent(sortBy)}&limit=${limit}`);
     const res = await fetch(url, {
       headers: { ...getAuthHeaders() }
     });
@@ -141,7 +141,7 @@ export const TestRun = {
   },
   
   async listByBuild(buildId) {
-    const res = await fetch(`http://localhost:4000/api/builds/${buildId}/test-runs`, {
+    const res = await fetch(getApiUrl(`builds/${buildId}/test-runs`), {
       headers: { ...getAuthHeaders() }
     });
     if (!res.ok) throw new Error('Failed to load test runs');
@@ -152,7 +152,7 @@ export const TestRun = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const url = `http://localhost:4000/api/teams/${teamId}/flakiness-analysis?timeRange=${timeRange}&minRuns=${minRuns}&flakinessThreshold=${flakinessThreshold}`;
+    const url = getApiUrl(`teams/${teamId}/flakiness-analysis?timeRange=${timeRange}&minRuns=${minRuns}&flakinessThreshold=${flakinessThreshold}`);
     const res = await fetch(url, {
       headers: { ...getAuthHeaders() }
     });
@@ -161,7 +161,7 @@ export const TestRun = {
   },
   
   async create(buildId, testRun) {
-    const res = await fetch(`http://localhost:4000/api/builds/${buildId}/test-runs`, {
+    const res = await fetch(getApiUrl(`builds/${buildId}/test-runs`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(testRun)
@@ -174,7 +174,7 @@ export const TestRun = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/reparse-all-tests`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/reparse-all-tests`), {
       method: 'POST',
       headers: { ...getAuthHeaders() }
     });
@@ -225,7 +225,7 @@ export const ScheduledTest = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const url = `http://localhost:4000/api/teams/${teamId}/scheduled-tests?sortBy=${encodeURIComponent(sortBy)}&limit=${limit}`;
+    const url = getApiUrl(`teams/${teamId}/scheduled-tests?sortBy=${encodeURIComponent(sortBy)}&limit=${limit}`);
     const res = await fetch(url, {
       headers: { ...getAuthHeaders() }
     });
@@ -237,7 +237,7 @@ export const ScheduledTest = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/scheduled-tests/${id}`), {
       headers: { ...getAuthHeaders() }
     });
     if (!res.ok) throw new Error('Failed to load scheduled test');
@@ -248,7 +248,7 @@ export const ScheduledTest = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/scheduled-tests`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(data)
@@ -261,7 +261,7 @@ export const ScheduledTest = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/scheduled-tests/${id}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(data)
@@ -274,7 +274,7 @@ export const ScheduledTest = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/scheduled-tests/${id}`), {
       method: 'DELETE',
       headers: { ...getAuthHeaders() }
     });
@@ -286,7 +286,7 @@ export const ScheduledTest = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}/run`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/scheduled-tests/${id}/run`), {
       method: 'POST',
       headers: { ...getAuthHeaders() }
     });
@@ -298,7 +298,7 @@ export const ScheduledTest = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const url = `http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}/runs?limit=${limit}`;
+    const url = getApiUrl(`teams/${teamId}/scheduled-tests/${id}/runs?limit=${limit}`);
     const res = await fetch(url, {
       headers: { ...getAuthHeaders() }
     });
@@ -310,7 +310,7 @@ export const ScheduledTest = {
     const teamId = getActiveTeamId();
     if (!teamId) throw new Error('No active team');
     
-    const res = await fetch(`http://localhost:4000/api/teams/${teamId}/scheduled-tests/${id}/status`, {
+    const res = await fetch(getApiUrl(`teams/${teamId}/scheduled-tests/${id}/status`), {
       headers: { ...getAuthHeaders() }
     });
     if (!res.ok) throw new Error('Failed to check status');
