@@ -148,10 +148,25 @@ describe('E2E Tests - Test Environment', () => {
     })
 
     it('should have working API endpoints', async () => {
-      const response = await fetch(`${API_URL.replace('/api', '')}/health`)
+      // Extract the base URL without /api suffix for the health endpoint
+      const baseUrl = API_URL.replace('/api', '')
+      const healthUrl = `${baseUrl}/health`
+      console.log('Testing health endpoint at:', healthUrl)
+      
+      const response = await fetch(healthUrl)
       expect(response.ok).toBe(true)
-      const data = await response.json()
-      expect(data.status).toBe('ok') // Backend returns { status: 'ok', timestamp: ... }
+      
+      // Check content type to ensure we're getting JSON
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json()
+        expect(data.status).toBe('ok') // Backend returns { status: 'ok', timestamp: ... }
+      } else {
+        // If not JSON, log the response for debugging
+        const text = await response.text()
+        console.log('Health endpoint response:', text.substring(0, 200))
+        throw new Error(`Expected JSON response, got ${contentType}`)
+      }
     })
 
     it('should handle CORS properly', async () => {
