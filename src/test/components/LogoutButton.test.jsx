@@ -22,13 +22,16 @@ describe('LogoutButton', () => {
   })
 
   it('calls logout function when clicked', () => {
-    const mockLogout = vi.fn()
-    render(<LogoutButton onLogout={mockLogout} />)
+    render(<LogoutButton />)
     
     const button = screen.getByRole('button', { name: /logout/i })
     fireEvent.click(button)
     
-    expect(mockLogout).toHaveBeenCalledTimes(1)
+    // Verify that localStorage.removeItem was called for all expected keys
+    expect(localStorage.removeItem).toHaveBeenCalledWith('token')
+    expect(localStorage.removeItem).toHaveBeenCalledWith('user')
+    expect(localStorage.removeItem).toHaveBeenCalledWith('activeTeamId')
+    expect(localStorage.removeItem).toHaveBeenCalledWith('teams')
   })
 
   it('clears localStorage when logout is called', () => {

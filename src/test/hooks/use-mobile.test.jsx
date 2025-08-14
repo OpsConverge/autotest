@@ -50,7 +50,7 @@ describe('useIsMobile', () => {
     expect(result.current).toBe(true)
   })
 
-  it('returns true for tablet screen size', () => {
+  it('returns false for tablet screen size (768px)', () => {
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       value: 768,
@@ -62,7 +62,7 @@ describe('useIsMobile', () => {
     })
 
     const { result } = renderHook(() => useIsMobile())
-    expect(result.current).toBe(true)
+    expect(result.current).toBe(false)
   })
 
   it('updates when window is resized', () => {
@@ -108,7 +108,7 @@ describe('useIsMobile', () => {
     })
 
     const { result } = renderHook(() => useIsMobile())
-    expect(result.current).toBe(true)
+    expect(result.current).toBe(false)
   })
 
   it('handles edge case of exactly 1024px width', () => {

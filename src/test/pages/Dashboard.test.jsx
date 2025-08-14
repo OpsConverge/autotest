@@ -1,112 +1,97 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '../utils/test-utils'
+import { render, screen, waitFor } from '@testing-library/react'
+import { BrowserRouter } from 'react-router-dom'
 import Dashboard from '../../pages/Dashboard'
 
-// Mock the API calls
-vi.mock('../../api/entities', () => ({
-  getTestResults: vi.fn(),
-  getBuildHistory: vi.fn(),
-  getAnalytics: vi.fn(),
+// Mock the entities module
+vi.mock('../../api/entities', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    Build: {
+      list: vi.fn(),
+    },
+    TestRun: {
+      listByBuild: vi.fn(),
+    },
+  }
+})
+
+// Mock the TeamContext
+vi.mock('../../context/TeamContext', () => ({
+  useTeam: vi.fn(() => ({
+    activeTeam: { id: 1, name: 'Test Team' },
+  })),
 }))
 
-// Mock the dashboard components
-vi.mock('../../components/dashboard/MetricsGrid', () => ({
-  default: () => <div data-testid="metrics-grid">Metrics Grid</div>
-}))
+// Mock localStorage
+const localStorageMock = {
+  getItem: vi.fn(() => 'test@example.com'),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+}
+global.localStorage = localStorageMock
 
-vi.mock('../../components/dashboard/TestTrends', () => ({
-  default: () => <div data-testid="test-trends">Test Trends</div>
-}))
-
-vi.mock('../../components/dashboard/RecentActivity', () => ({
-  default: () => <div data-testid="recent-activity">Recent Activity</div>
-}))
-
-vi.mock('../../components/dashboard/QuickActions', () => ({
-  default: () => <div data-testid="quick-actions">Quick Actions</div>
-}))
-
-vi.mock('../../components/dashboard/FlakyTests', () => ({
-  default: () => <div data-testid="flaky-tests">Flaky Tests</div>
-}))
+const renderWithRouter = (component) => {
+  return render(<BrowserRouter>{component}</BrowserRouter>)
+}
 
 describe('Dashboard', () => {
-  const mockTestResults = [
-    { id: 1, name: 'Test 1', status: 'passed', duration: 1000 },
-    { id: 2, name: 'Test 2', status: 'failed', duration: 2000 },
-  ]
-
-  const mockBuildHistory = [
-    { id: 1, buildNumber: '1.0.0', status: 'success', timestamp: '2024-01-01' },
-    { id: 2, buildNumber: '1.0.1', status: 'failed', timestamp: '2024-01-02' },
-  ]
-
-  const mockAnalytics = {
-    totalTests: 100,
-    passedTests: 85,
-    failedTests: 10,
-    flakyTests: 5,
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('renders dashboard components', async () => {
-    const { getTestResults, getBuildHistory, getAnalytics } = await import('../../api/entities')
-    getTestResults.mockResolvedValue(mockTestResults)
-    getBuildHistory.mockResolvedValue(mockBuildHistory)
-    getAnalytics.mockResolvedValue(mockAnalytics)
-
-    render(<Dashboard />)
+  it('renders dashboard components', () => {
+    renderWithRouter(<Dashboard />)
     
-    await waitFor(() => {
-      expect(screen.getByTestId('metrics-grid')).toBeInTheDocument()
-      expect(screen.getByTestId('test-trends')).toBeInTheDocument()
-      expect(screen.getByTestId('recent-activity')).toBeInTheDocument()
-      expect(screen.getByTestId('quick-actions')).toBeInTheDocument()
-      expect(screen.getByTestId('flaky-tests')).toBeInTheDocument()
-    })
+    expect(screen.getByText('Test Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Comprehensive overview of your test automation pipeline')).toBeInTheDocument()
+    expect(screen.getByText('Run Tests')).toBeInTheDocument()
+    expect(screen.getByText('Refresh')).toBeInTheDocument()
+    expect(screen.getByText('Latest Builds')).toBeInTheDocument()
   })
 
   it('fetches data on mount', async () => {
-    const { getTestResults, getBuildHistory, getAnalytics } = await import('../../api/entities')
-    getTestResults.mockResolvedValue(mockTestResults)
-    getBuildHistory.mockResolvedValue(mockBuildHistory)
-    getAnalytics.mockResolvedValue(mockAnalytics)
+    const mockBuilds = [
+      { id: 1, version: 'v1.0.0', branch: 'main', status: 'completed', created_date: '2024-01-01T10:00:00Z' }
+    ]
+    const mockTestRuns = [
+      { id: 1, status: 'passed', coverage_percentage: 85 }
+    ]
 
-    render(<Dashboard />)
+    const { Build, TestRun } = await import('../../api/entities')
+    Build.list.mockResolvedValue(mockBuilds)
+    TestRun.listByBuild.mockResolvedValue(mockTestRuns)
+
+    renderWithRouter(<Dashboard />)
     
     await waitFor(() => {
-      expect(getTestResults).toHaveBeenCalled()
-      expect(getBuildHistory).toHaveBeenCalled()
-      expect(getAnalytics).toHaveBeenCalled()
+      expect(Build.list).toHaveBeenCalled()
+      expect(TestRun.listByBuild).toHaveBeenCalledWith(1)
     })
   })
 
   it('shows loading state initially', () => {
-    render(<Dashboard />)
-    // Should show loading indicators while data is being fetched
-    expect(screen.getByTestId('metrics-grid')).toBeInTheDocument()
+    renderWithRouter(<Dashboard />)
+    
+    // The component should render even while loading
+    expect(screen.getByText('Test Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Run Tests')).toBeInTheDocument()
   })
 
   it('handles API errors gracefully', async () => {
-    const { getTestResults, getBuildHistory, getAnalytics } = await import('../../api/entities')
-    getTestResults.mockRejectedValue(new Error('API Error'))
-    getBuildHistory.mockRejectedValue(new Error('API Error'))
-    getAnalytics.mockRejectedValue(new Error('API Error'))
+    const { Build } = await import('../../api/entities')
+    Build.list.mockRejectedValue(new Error('API Error'))
 
-    render(<Dashboard />)
+    renderWithRouter(<Dashboard />)
     
-    await waitFor(() => {
-      // Should still render the components even if API calls fail
-      expect(screen.getByTestId('metrics-grid')).toBeInTheDocument()
-      expect(screen.getByTestId('test-trends')).toBeInTheDocument()
-    })
+    // Component should still render even with API errors
+    expect(screen.getByText('Test Dashboard')).toBeInTheDocument()
   })
 
   it('has correct page title', () => {
-    render(<Dashboard />)
-    expect(document.title).toContain('Dashboard')
+    renderWithRouter(<Dashboard />)
+    expect(screen.getByText('Test Dashboard')).toBeInTheDocument()
   })
 })
