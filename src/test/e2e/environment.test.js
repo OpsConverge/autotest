@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import fetch from 'node-fetch'
 
 // Environment configuration
 const TEST_URL = process.env.TEST_TARGET_URL || 'http://localhost:5173'
@@ -55,7 +56,7 @@ describe('E2E Tests - Test Environment', () => {
       expect(response.ok).toBe(true)
       const data = await response.json()
       expect(data.token).toBeDefined()
-      expect(data.user).toBeDefined()
+      expect(data.email).toBeDefined() // Backend returns email, not user object
       
       authToken = data.token
     })
@@ -147,8 +148,10 @@ describe('E2E Tests - Test Environment', () => {
     })
 
     it('should have working API endpoints', async () => {
-      const response = await fetch(`${API_URL}/health`)
+      const response = await fetch(`${API_URL.replace('/api', '')}/health`)
       expect(response.ok).toBe(true)
+      const data = await response.json()
+      expect(data.status).toBe('ok') // Backend returns { status: 'ok', timestamp: ... }
     })
 
     it('should handle CORS properly', async () => {
@@ -181,7 +184,8 @@ describe('E2E Tests - Test Environment', () => {
 
       expect(createTeamResponse.ok).toBe(true)
       const teamData = await createTeamResponse.json()
-      expect(teamData.id).toBeDefined()
+      expect(teamData.team).toBeDefined() // Backend returns { team: { id, name } }
+      expect(teamData.team.id).toBeDefined()
     })
   })
 })
