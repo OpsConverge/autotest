@@ -156,16 +156,21 @@ describe('E2E Tests - Test Environment', () => {
       const response = await fetch(healthUrl)
       expect(response.ok).toBe(true)
       
-      // Check content type to ensure we're getting JSON
+      // Check content type to handle different response formats
       const contentType = response.headers.get('content-type')
       if (contentType && contentType.includes('application/json')) {
+        // Local environment returns JSON
         const data = await response.json()
         expect(data.status).toBe('ok') // Backend returns { status: 'ok', timestamp: ... }
+      } else if (contentType && contentType.includes('text/plain')) {
+        // Deployed environment returns plain text
+        const text = await response.text()
+        expect(text).toBe('healthy') // Deployed environment returns "healthy"
       } else {
-        // If not JSON, log the response for debugging
+        // If neither JSON nor plain text, log the response for debugging
         const text = await response.text()
         console.log('Health endpoint response:', text.substring(0, 200))
-        throw new Error(`Expected JSON response, got ${contentType}`)
+        throw new Error(`Unexpected content type: ${contentType}`)
       }
     })
 
