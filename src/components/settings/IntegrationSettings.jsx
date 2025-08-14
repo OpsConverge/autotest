@@ -19,6 +19,7 @@ import {
 import { useTeam } from '../../context/TeamContext';
 import { GitHubIntegration } from '../../api/entities';
 import { getApiUrl } from '@/utils';
+import GitHubRepoSelector from './GitHubRepoSelector';
 
 export default function IntegrationSettings({ settings, onUpdate }) {
   const { activeTeam } = useTeam();

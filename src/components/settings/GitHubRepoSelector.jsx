@@ -28,7 +28,6 @@ export default function GitHubRepoSelector({ isOpen, onClose, onSelectRepo, repo
         fetchRepositories();
       }
     }
-    // eslint-disable-next-line
   }, [isOpen, accessToken, externalRepos]);
 
   useEffect(() => {

@@ -63,7 +63,6 @@ export function TeamProvider({ children }) {
 
   useEffect(() => {
     fetchTeams();
-    // eslint-disable-next-line
   }, []);
 
   // Listen for storage changes (when token is set after login/registration)
