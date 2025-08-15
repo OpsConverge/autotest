@@ -1,0 +1,309 @@
+name: CI/CD Pipeline 3 - AVA + Selenium + REST Assured + Gatling
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+        - test
+        - staging
+        - production
+      run_all_tests:
+        description: 'Run all test types'
+        required: false
+        default: true
+        type: boolean
+      run_unit_tests:
+        description: 'Run unit tests only'
+        required: false
+        default: false
+        type: boolean
+      run_integration_tests:
+        description: 'Run integration tests only'
+        required: false
+        default: false
+        type: boolean
+      run_api_tests:
+        description: 'Run API tests only'
+        required: false
+        default: false
+        type: boolean
+      run_e2e_tests:
+        description: 'Run E2E tests only'
+        required: false
+        default: false
+        type: boolean
+      run_performance_tests:
+        description: 'Run performance tests only'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  TEST_ENVIRONMENT_URL: ${{ secrets.TEST_ENVIRONMENT_URL }}
+  TEST_ENVIRONMENT_IP: ${{ secrets.TEST_ENVIRONMENT_IP }}
+  TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+  TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+jobs:
+  # Job 1: Code Quality & Linting
+  code-quality:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  # Job 2: Unit Tests (AVA/pytest-style)
+  unit-tests:
+    name: Unit Tests (AVA)
+    runs-on: ubuntu-latest
+    needs: code-quality
+    if: ${{ github.event.inputs.run_all_tests == 'true' || github.event.inputs.run_unit_tests == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with AVA
+        run: npm run test:unit:ava
+
+      - name: Generate coverage report
+        run: npm run test:coverage:ava
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/coverage-final.json
+          flags: unit-ava
+          name: unit-coverage-ava
+
+  # Job 3: Integration Tests (AVA)
+  integration-tests:
+    name: Integration Tests (AVA)
+    runs-on: ubuntu-latest
+    needs: code-quality
+    if: ${{ github.event.inputs.run_all_tests == 'true' || github.event.inputs.run_integration_tests == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run integration tests with AVA
+        run: npm run test:integration:ava
+
+  # Job 4: API Tests (REST Assured-style)
+  api-tests:
+    name: API Tests (REST Assured-style)
+    runs-on: ubuntu-latest
+    needs: code-quality
+    if: ${{ github.event.inputs.run_all_tests == 'true' || github.event.inputs.run_api_tests == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run API tests with REST Assured-style
+        run: npm run test:api:restassured
+
+  # Job 5: Deploy to Test Environment
+  deploy-test:
+    name: Deploy to Test Environment
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, api-tests]
+    if: ${{ github.event.inputs.run_all_tests == 'true' || github.event.inputs.run_e2e_tests == 'true' || github.event.inputs.run_performance_tests == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Deploy to EC2 Test Environment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.TEST_ENVIRONMENT_IP }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /opt/autotest
+            git pull origin main
+            docker-compose -f docker-compose.test.yml down
+            docker-compose -f docker-compose.test.yml build --no-cache
+            docker-compose -f docker-compose.test.yml up -d
+            docker-compose -f docker-compose.test.yml exec backend node scripts/migrate.js
+            echo "Deployment completed successfully"
+
+      - name: Wait for deployment
+        run: |
+          sleep 30
+          echo "Waiting for services to be ready..."
+
+  # Job 6: E2E Tests (Selenium)
+  e2e-tests:
+    name: E2E Tests (Selenium)
+    runs-on: ubuntu-latest
+    needs: deploy-test
+    if: ${{ github.event.inputs.run_all_tests == 'true' || github.event.inputs.run_e2e_tests == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+          sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+          apt-get update
+          apt-get install -y google-chrome-stable
+
+      - name: Install ChromeDriver
+        run: |
+          wget -N https://chromedriver.storage.googleapis.com/$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip
+          unzip chromedriver_linux64.zip
+          chmod +x chromedriver
+          sudo mv chromedriver /usr/local/bin/
+
+      - name: Setup test environment variables
+        run: |
+          echo "TEST_TARGET_URL=${{ env.TEST_ENVIRONMENT_URL }}" >> $GITHUB_ENV
+          echo "TEST_API_URL=${{ env.TEST_ENVIRONMENT_URL }}/api" >> $GITHUB_ENV
+
+      - name: Run E2E tests with Selenium
+        run: |
+          npm run test:e2e:selenium
+        env:
+          TEST_TARGET_URL: ${{ env.TEST_ENVIRONMENT_URL }}
+          TEST_API_URL: ${{ env.TEST_ENVIRONMENT_URL }}/api
+          TEST_USER_EMAIL: ${{ env.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ env.TEST_USER_PASSWORD }}
+
+      - name: Upload Selenium test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: selenium-results
+          path: reports/selenium-results.xml
+          retention-days: 30
+
+  # Job 7: Performance Tests (Gatling)
+  performance-tests:
+    name: Performance Tests (Gatling)
+    runs-on: ubuntu-latest
+    needs: deploy-test
+    if: ${{ github.event.inputs.run_all_tests == 'true' || github.event.inputs.run_performance_tests == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Download Gatling
+        run: |
+          wget https://repo1.maven.org/maven2/io/gatling/highcharts/gatling-charts-highcharts-bundle/3.9.5/gatling-charts-highcharts-bundle-3.9.5-bundle.zip
+          unzip gatling-charts-highcharts-bundle-3.9.5-bundle.zip
+          mv gatling-charts-highcharts-bundle-3.9.5 gatling
+
+      - name: Setup test environment variables
+        run: |
+          echo "TEST_TARGET_URL=${{ env.TEST_ENVIRONMENT_URL }}" >> $GITHUB_ENV
+          echo "TEST_API_URL=${{ env.TEST_ENVIRONMENT_URL }}/api" >> $GITHUB_ENV
+
+      - name: Run performance tests with Gatling
+        run: |
+          ./gatling/bin/gatling.sh -s LoadTest -rf reports/gatling
+        env:
+          TEST_TARGET_URL: ${{ env.TEST_ENVIRONMENT_URL }}
+          TEST_API_URL: ${{ env.TEST_ENVIRONMENT_URL }}/api
+
+      - name: Upload Gatling test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: gatling-results
+          path: reports/gatling/
+          retention-days: 30
+
+  # Job 8: Test Results Summary
+  test-results:
+    name: Test Results Summary (Pipeline 3)
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, api-tests, e2e-tests, performance-tests]
+    if: always()
+    steps:
+      - name: Generate test summary
+        run: |
+          echo "## Test Results Summary - Pipeline 3" >> $GITHUB_STEP_SUMMARY
+          echo "### Unit Tests (AVA): ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "### Integration Tests (AVA): ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "### API Tests (REST Assured-style): ${{ needs.api-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "### E2E Tests (Selenium): ${{ needs.e2e-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "### Performance Tests (Gatling): ${{ needs.performance-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.unit-tests.result }}" == "success" ] && [ "${{ needs.integration-tests.result }}" == "success" ] && [ "${{ needs.api-tests.result }}" == "success" ] && [ "${{ needs.e2e-tests.result }}" == "success" ] && [ "${{ needs.performance-tests.result }}" == "success" ]; then
+            echo "✅ All tests passed in Pipeline 3!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some tests failed in Pipeline 3. Please check the logs above." >> $GITHUB_STEP_SUMMARY
+          fi

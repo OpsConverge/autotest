@@ -1,0 +1,564 @@
+name: Master Test Pipeline (All Test Types + All Frameworks)
+
+on:
+  workflow_dispatch:
+    inputs:
+      # Unit Tests
+      run_unit_tests:
+        description: 'Run all unit tests'
+        required: false
+        default: true
+        type: boolean
+      unit_frameworks:
+        description: 'Unit test frameworks to run'
+        required: false
+        default: 'vitest,jest,ava'
+        type: string
+      
+      # Integration Tests
+      run_integration_tests:
+        description: 'Run all integration tests'
+        required: false
+        default: true
+        type: boolean
+      integration_frameworks:
+        description: 'Integration test frameworks to run'
+        required: false
+        default: 'vitest,supertest,tap'
+        type: string
+      
+      # API Tests
+      run_api_tests:
+        description: 'Run all API tests'
+        required: false
+        default: true
+        type: boolean
+      api_frameworks:
+        description: 'API test frameworks to run'
+        required: false
+        default: 'supertest,karate,restassured'
+        type: string
+      
+      # E2E Tests
+      run_e2e_tests:
+        description: 'Run all E2E tests'
+        required: false
+        default: true
+        type: boolean
+      e2e_frameworks:
+        description: 'E2E test frameworks to run'
+        required: false
+        default: 'playwright,cypress,selenium'
+        type: string
+      
+      # Performance Tests
+      run_performance_tests:
+        description: 'Run all performance tests'
+        required: false
+        default: true
+        type: boolean
+      performance_frameworks:
+        description: 'Performance test frameworks to run'
+        required: false
+        default: 'k6,jmeter,gatling'
+        type: string
+      
+      # Environment Configuration
+      target_url:
+        description: 'Target URL for tests'
+        required: false
+        default: 'http://localhost:5173'
+        type: string
+      backend_url:
+        description: 'Backend URL for API tests'
+        required: false
+        default: 'http://localhost:4000'
+        type: string
+      test_duration:
+        description: 'Performance test duration (minutes)'
+        required: false
+        default: '5'
+        type: string
+      concurrent_users:
+        description: 'Performance test concurrent users'
+        required: false
+        default: '10'
+        type: string
+      
+      # Reporting
+      generate_coverage:
+        description: 'Generate coverage reports'
+        required: false
+        default: true
+        type: boolean
+      notify_slack:
+        description: 'Send Slack notifications'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  setup-environment:
+    name: Setup Test Environment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start application
+        run: |
+          npm run preview &
+          sleep 10
+          echo "Application started at http://localhost:4173"
+
+      - name: Wait for application to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:4173; then
+              echo "Application is ready"
+              break
+            fi
+            echo "Waiting for application... ($i/30)"
+            sleep 2
+          done
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    if: ${{ github.event.inputs.run_unit_tests == 'true' }}
+    strategy:
+      matrix:
+        framework: ${{ fromJson('["' + github.event.inputs.unit_frameworks + '"]') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ${{ matrix.framework }} unit tests
+        run: |
+          case "${{ matrix.framework }}" in
+            "vitest")
+              npm run test:unit
+              ;;
+            "jest")
+              npm run test:unit:jest
+              ;;
+            "ava")
+              npm run test:unit:ava
+              ;;
+          esac
+
+      - name: Upload ${{ matrix.framework }} unit test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.framework }}-unit-results
+          path: ./coverage/${{ matrix.framework }}-results.json
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    if: ${{ github.event.inputs.run_integration_tests == 'true' }}
+    strategy:
+      matrix:
+        framework: ${{ fromJson('["' + github.event.inputs.integration_frameworks + '"]') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ${{ matrix.framework }} integration tests
+        run: |
+          case "${{ matrix.framework }}" in
+            "vitest")
+              npm run test:integration
+              ;;
+            "supertest")
+              npm run test:integration:supertest
+              ;;
+            "tap")
+              npm run test:integration:tap
+              ;;
+          esac
+        env:
+          TEST_API_URL: ${{ github.event.inputs.backend_url }}
+
+      - name: Upload ${{ matrix.framework }} integration test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.framework }}-integration-results
+          path: ./coverage/${{ matrix.framework }}-results.json
+
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    if: ${{ github.event.inputs.run_api_tests == 'true' }}
+    strategy:
+      matrix:
+        framework: ${{ fromJson('["' + github.event.inputs.api_frameworks + '"]') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ${{ matrix.framework }} API tests
+        run: |
+          case "${{ matrix.framework }}" in
+            "supertest")
+              npm run test:api:supertest
+              ;;
+            "karate")
+              npm run test:api:karate
+              ;;
+            "restassured")
+              npm run test:api:restassured
+              ;;
+          esac
+        env:
+          TEST_API_URL: ${{ github.event.inputs.backend_url }}
+
+      - name: Upload ${{ matrix.framework }} API test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.framework }}-api-results
+          path: ./coverage/${{ matrix.framework }}-results.json
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    if: ${{ github.event.inputs.run_e2e_tests == 'true' }}
+    strategy:
+      matrix:
+        framework: ${{ fromJson('["' + github.event.inputs.e2e_frameworks + '"]') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup ${{ matrix.framework }}
+        run: |
+          case "${{ matrix.framework }}" in
+            "playwright")
+              npx playwright install --with-deps
+              ;;
+            "cypress")
+              echo "Cypress is included in dependencies"
+              ;;
+            "selenium")
+              sudo apt-get update
+              sudo apt-get install -y google-chrome-stable
+              ;;
+          esac
+
+      - name: Run ${{ matrix.framework }} E2E tests
+        run: |
+          case "${{ matrix.framework }}" in
+            "playwright")
+              npm run test:e2e:playwright
+              ;;
+            "cypress")
+              npm run test:e2e:cypress
+              ;;
+            "selenium")
+              npm run test:e2e:selenium
+              ;;
+          esac
+        env:
+          TEST_TARGET_URL: ${{ github.event.inputs.target_url }}
+          CYPRESS_baseUrl: ${{ github.event.inputs.target_url }}
+
+      - name: Upload ${{ matrix.framework }} E2E test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.framework }}-e2e-results
+          path: ./coverage/${{ matrix.framework }}-results.json
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    if: ${{ github.event.inputs.run_performance_tests == 'true' }}
+    strategy:
+      matrix:
+        framework: ${{ fromJson('["' + github.event.inputs.performance_frameworks + '"]') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup ${{ matrix.framework }}
+        run: |
+          case "${{ matrix.framework }}" in
+            "k6")
+              sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+              echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+              sudo apt-get update
+              sudo apt-get install k6
+              ;;
+            "jmeter")
+              wget https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.4.3.tgz
+              tar -xzf apache-jmeter-5.4.3.tgz
+              echo "JMETER_HOME=$PWD/apache-jmeter-5.4.3" >> $GITHUB_ENV
+              ;;
+            "gatling")
+              wget https://repo1.maven.org/maven2/io/gatling/highcharts/gatling-charts-highcharts-bundle/3.9.5/gatling-charts-highcharts-bundle-3.9.5-bundle.zip
+              unzip gatling-charts-highcharts-bundle-3.9.5-bundle.zip
+              echo "GATLING_HOME=$PWD/gatling-charts-highcharts-bundle-3.9.5" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Run ${{ matrix.framework }} performance tests
+        run: |
+          case "${{ matrix.framework }}" in
+            "k6")
+              npm run test:performance:k6
+              ;;
+            "jmeter")
+              $JMETER_HOME/bin/jmeter -n -t tests/performance/jmeter-load-test.jmx \
+                -JTEST_TARGET_URL=${{ github.event.inputs.target_url }} \
+                -JTEST_DURATION=${{ github.event.inputs.test_duration }} \
+                -JCONCURRENT_USERS=${{ github.event.inputs.concurrent_users }} \
+                -l reports/jmeter-results.jtl
+              ;;
+            "gatling")
+              $GATLING_HOME/bin/gatling.sh -s LoadTest -rf reports/gatling
+              ;;
+          esac
+        env:
+          TEST_TARGET_URL: ${{ github.event.inputs.target_url }}
+          TEST_DURATION: ${{ github.event.inputs.test_duration }}
+          CONCURRENT_USERS: ${{ github.event.inputs.concurrent_users }}
+
+      - name: Upload ${{ matrix.framework }} performance test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.framework }}-performance-results
+          path: ./reports/${{ matrix.framework }}-results.*
+
+  test-results-parser:
+    name: Parse and Combine All Test Results
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, api-tests, e2e-tests, performance-tests]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download all test results
+        uses: actions/download-artifact@v3
+        with:
+          path: ./coverage/
+
+      - name: Parse all test results
+        run: |
+          node -e "
+          const { TestResultsParser } = require('./src/utils/testResultsParser.js');
+          const parser = new TestResultsParser();
+          
+          // Collect all test results
+          const allResults = [];
+          
+          // Parse unit test results
+          const unitFrameworks = '${{ github.event.inputs.unit_frameworks }}'.split(',');
+          unitFrameworks.forEach(framework => {
+            try {
+              const results = parser.parseResults(framework, 'unit', \`./coverage/\${framework}-results.json\`);
+              allResults.push(results);
+            } catch (error) {
+              console.log(\`No results for \${framework} unit tests\`);
+            }
+          });
+          
+          // Parse integration test results
+          const integrationFrameworks = '${{ github.event.inputs.integration_frameworks }}'.split(',');
+          integrationFrameworks.forEach(framework => {
+            try {
+              const results = parser.parseResults(framework, 'integration', \`./coverage/\${framework}-results.json\`);
+              allResults.push(results);
+            } catch (error) {
+              console.log(\`No results for \${framework} integration tests\`);
+            }
+          });
+          
+          // Parse API test results
+          const apiFrameworks = '${{ github.event.inputs.api_frameworks }}'.split(',');
+          apiFrameworks.forEach(framework => {
+            try {
+              const results = parser.parseResults(framework, 'api', \`./coverage/\${framework}-results.json\`);
+              allResults.push(results);
+            } catch (error) {
+              console.log(\`No results for \${framework} API tests\`);
+            }
+          });
+          
+          // Parse E2E test results
+          const e2eFrameworks = '${{ github.event.inputs.e2e_frameworks }}'.split(',');
+          e2eFrameworks.forEach(framework => {
+            try {
+              const results = parser.parseResults(framework, 'e2e', \`./coverage/\${framework}-results.json\`);
+              allResults.push(results);
+            } catch (error) {
+              console.log(\`No results for \${framework} E2E tests\`);
+            }
+          });
+          
+          // Parse performance test results
+          const performanceFrameworks = '${{ github.event.inputs.performance_frameworks }}'.split(',');
+          performanceFrameworks.forEach(framework => {
+            try {
+              const results = parser.parseResults(framework, 'performance', \`./reports/\${framework}-results.json\`);
+              allResults.push(results);
+            } catch (error) {
+              console.log(\`No results for \${framework} performance tests\`);
+            }
+          });
+          
+          // Generate unified report
+          const unifiedReport = parser.generateUnifiedReport(allResults);
+          
+          // Save unified report
+          require('fs').writeFileSync('./reports/unified-master-test-report.json', JSON.stringify(unifiedReport, null, 2));
+          console.log('Unified master test report generated');
+          "
+
+      - name: Upload unified test report
+        uses: actions/upload-artifact@v3
+        with:
+          name: unified-master-test-report
+          path: ./reports/unified-master-test-report.json
+
+  notify-results:
+    name: Notify Master Test Results
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, api-tests, e2e-tests, performance-tests, test-results-parser]
+    if: ${{ github.event.inputs.notify_slack == 'true' }}
+    steps:
+      - name: Download unified test report
+        uses: actions/download-artifact@v3
+        with:
+          name: unified-master-test-report
+
+      - name: Parse results for notification
+        id: results
+        run: |
+          if [ -f "./unified-master-test-report.json" ]; then
+            TOTAL_TESTS=$(jq '.summary.total' unified-master-test-report.json)
+            PASSED_TESTS=$(jq '.summary.passed' unified-master-test-report.json)
+            FAILED_TESTS=$(jq '.summary.failed' unified-master-test-report.json)
+            SUCCESS_RATE=$(echo "scale=1; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc)
+            
+            echo "total=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+            echo "passed=$PASSED_TESTS" >> $GITHUB_OUTPUT
+            echo "failed=$FAILED_TESTS" >> $GITHUB_OUTPUT
+            echo "success_rate=$SUCCESS_RATE" >> $GITHUB_OUTPUT
+          else
+            echo "total=0" >> $GITHUB_OUTPUT
+            echo "passed=0" >> $GITHUB_OUTPUT
+            echo "failed=0" >> $GITHUB_OUTPUT
+            echo "success_rate=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify Slack
+        if: ${{ steps.results.outputs.failed > 0 }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: |
+            Master Test Pipeline Failed! 
+            Total Tests: ${{ steps.results.outputs.total }}
+            Passed: ${{ steps.results.outputs.passed }}
+            Failed: ${{ steps.results.outputs.failed }}
+            Success Rate: ${{ steps.results.outputs.success_rate }}%
+            
+            Test Types Run:
+            - Unit: ${{ github.event.inputs.unit_frameworks }}
+            - Integration: ${{ github.event.inputs.integration_frameworks }}
+            - API: ${{ github.event.inputs.api_frameworks }}
+            - E2E: ${{ github.event.inputs.e2e_frameworks }}
+            - Performance: ${{ github.event.inputs.performance_frameworks }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack Success
+        if: ${{ steps.results.outputs.failed == 0 }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: |
+            Master Test Pipeline Passed! 
+            Total Tests: ${{ steps.results.outputs.total }}
+            Passed: ${{ steps.results.outputs.passed }}
+            Success Rate: ${{ steps.results.outputs.success_rate }}%
+            
+            Test Types Run:
+            - Unit: ${{ github.event.inputs.unit_frameworks }}
+            - Integration: ${{ github.event.inputs.integration_frameworks }}
+            - API: ${{ github.event.inputs.api_frameworks }}
+            - E2E: ${{ github.event.inputs.e2e_frameworks }}
+            - Performance: ${{ github.event.inputs.performance_frameworks }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

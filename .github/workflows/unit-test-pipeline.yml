@@ -1,0 +1,223 @@
+name: Unit Test Pipeline (Vitest + Jest + AVA)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_vitest:
+        description: 'Run Vitest unit tests'
+        required: false
+        default: true
+        type: boolean
+      run_jest:
+        description: 'Run Jest unit tests'
+        required: false
+        default: true
+        type: boolean
+      run_ava:
+        description: 'Run AVA unit tests'
+        required: false
+        default: true
+        type: boolean
+      run_coverage:
+        description: 'Generate coverage reports'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  unit-tests-vitest:
+    name: Unit Tests (Vitest)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.run_vitest == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest unit tests
+        run: npm run test:unit
+
+      - name: Run Vitest coverage
+        if: ${{ github.event.inputs.run_coverage == 'true' }}
+        run: npm run test:coverage
+
+      - name: Upload coverage reports
+        if: ${{ github.event.inputs.run_coverage == 'true' }}
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: vitest-unit
+          name: vitest-unit-coverage
+
+  unit-tests-jest:
+    name: Unit Tests (Jest)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.run_jest == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Jest unit tests
+        run: npm run test:unit:jest
+
+      - name: Run Jest coverage
+        if: ${{ github.event.inputs.run_coverage == 'true' }}
+        run: npm run test:coverage:jest
+
+      - name: Upload coverage reports
+        if: ${{ github.event.inputs.run_coverage == 'true' }}
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: jest-unit
+          name: jest-unit-coverage
+
+  unit-tests-ava:
+    name: Unit Tests (AVA)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.run_ava == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run AVA unit tests
+        run: npm run test:unit:ava
+
+      - name: Run AVA coverage
+        if: ${{ github.event.inputs.run_coverage == 'true' }}
+        run: npm run test:coverage:ava
+
+      - name: Upload coverage reports
+        if: ${{ github.event.inputs.run_coverage == 'true' }}
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: ava-unit
+          name: ava-unit-coverage
+
+  test-results-parser:
+    name: Parse and Combine Test Results
+    runs-on: ubuntu-latest
+    needs: [unit-tests-vitest, unit-tests-jest, unit-tests-ava]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Parse test results
+        run: |
+          node -e "
+          const { TestResultsParser } = require('./src/utils/testResultsParser.js');
+          const parser = new TestResultsParser();
+          
+          // Parse results from each framework
+          const vitestResults = parser.parseResults('vitest', 'unit', './coverage/vitest-results.json');
+          const jestResults = parser.parseResults('jest', 'unit', './coverage/jest-results.json');
+          const avaResults = parser.parseResults('ava', 'unit', './coverage/ava-results.json');
+          
+          // Generate unified report
+          const unifiedReport = parser.generateUnifiedReport([vitestResults, jestResults, avaResults]);
+          
+          // Save unified report
+          require('fs').writeFileSync('./reports/unified-unit-test-report.json', JSON.stringify(unifiedReport, null, 2));
+          console.log('Unified unit test report generated');
+          "
+
+      - name: Upload unified test report
+        uses: actions/upload-artifact@v3
+        with:
+          name: unified-unit-test-report
+          path: ./reports/unified-unit-test-report.json
+
+  notify-results:
+    name: Notify Test Results
+    runs-on: ubuntu-latest
+    needs: [unit-tests-vitest, unit-tests-jest, unit-tests-ava, test-results-parser]
+    if: always()
+    steps:
+      - name: Download unified test report
+        uses: actions/download-artifact@v3
+        with:
+          name: unified-unit-test-report
+
+      - name: Parse results for notification
+        id: results
+        run: |
+          if [ -f "./unified-unit-test-report.json" ]; then
+            TOTAL_TESTS=$(jq '.summary.total' unified-unit-test-report.json)
+            PASSED_TESTS=$(jq '.summary.passed' unified-unit-test-report.json)
+            FAILED_TESTS=$(jq '.summary.failed' unified-unit-test-report.json)
+            SUCCESS_RATE=$(echo "scale=1; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc)
+            
+            echo "total=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+            echo "passed=$PASSED_TESTS" >> $GITHUB_OUTPUT
+            echo "failed=$FAILED_TESTS" >> $GITHUB_OUTPUT
+            echo "success_rate=$SUCCESS_RATE" >> $GITHUB_OUTPUT
+          else
+            echo "total=0" >> $GITHUB_OUTPUT
+            echo "passed=0" >> $GITHUB_OUTPUT
+            echo "failed=0" >> $GITHUB_OUTPUT
+            echo "success_rate=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify Slack
+        if: ${{ steps.results.outputs.failed > 0 }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: |
+            Unit Test Pipeline Failed! 
+            Total: ${{ steps.results.outputs.total }}
+            Passed: ${{ steps.results.outputs.passed }}
+            Failed: ${{ steps.results.outputs.failed }}
+            Success Rate: ${{ steps.results.outputs.success_rate }}%
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack Success
+        if: ${{ steps.results.outputs.failed == 0 }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: |
+            Unit Test Pipeline Passed! 
+            Total: ${{ steps.results.outputs.total }}
+            Passed: ${{ steps.results.outputs.passed }}
+            Success Rate: ${{ steps.results.outputs.success_rate }}%
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
