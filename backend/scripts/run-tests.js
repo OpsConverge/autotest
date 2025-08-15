@@ -179,7 +179,21 @@ const testFunctions = {
 
   // Test settings page
   async testSettingsPage(client) {
-    const response = await client.authenticatedRequest('/teams/1/settings');
+    // First get the user's teams to find the correct team ID
+    const teamsResponse = await client.authenticatedRequest('/teams');
+    
+    if (!teamsResponse.ok) {
+      throw new Error(`Failed to get teams: ${teamsResponse.status}`);
+    }
+
+    if (!teamsResponse.data?.teams || teamsResponse.data.teams.length === 0) {
+      throw new Error('No teams found for user');
+    }
+
+    // Use the first team's ID
+    const teamId = teamsResponse.data.teams[0].id;
+    
+    const response = await client.authenticatedRequest(`/teams/${teamId}/settings`);
     
     if (!response.ok) {
       throw new Error(`Settings access failed: ${response.status}`);
@@ -190,7 +204,22 @@ const testFunctions = {
 
   // Test integrations page
   async testIntegrationsPage(client) {
-    const response = await client.authenticatedRequest('/teams/1/integrations');
+    // First get the user's teams to find the correct team ID
+    const teamsResponse = await client.authenticatedRequest('/teams');
+    
+    if (!teamsResponse.ok) {
+      throw new Error(`Failed to get teams: ${teamsResponse.status}`);
+    }
+
+    if (!teamsResponse.data?.teams || teamsResponse.data.teams.length === 0) {
+      throw new Error('No teams found for user');
+    }
+
+    // Use the first team's ID
+    const teamId = teamsResponse.data.teams[0].id;
+    
+    // Test GitHub integration status endpoint with the correct team ID
+    const response = await client.authenticatedRequest(`/teams/${teamId}/github/status`);
     
     if (!response.ok) {
       throw new Error(`Integrations access failed: ${response.status}`);
