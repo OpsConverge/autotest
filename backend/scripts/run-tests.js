@@ -115,13 +115,51 @@ const testFunctions = {
 
   // Test user login
   async testUserLogin(client) {
-    const response = await client.login('admin');
-    
-    if (!response.token) {
-      throw new Error('Login failed - no token received');
-    }
+    try {
+      // First try to login with the configured test user
+      const response = await client.login('admin');
+      
+      if (!response.token) {
+        throw new Error('Login failed - no token received');
+      }
 
-    return response;
+      return response;
+    } catch (error) {
+      console.log('Login failed, attempting to register test user...');
+      
+      // If login fails, try to register a new test user
+      const testEmail = `test-${Date.now()}@example.com`;
+      const testPassword = 'testpass123';
+      
+      const registerResponse = await client.makeRequest('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: testEmail,
+          password: testPassword
+        })
+      });
+
+      if (!registerResponse.ok) {
+        throw new Error(`Registration failed: ${registerResponse.status} - ${JSON.stringify(registerResponse.data)}`);
+      }
+
+      // Now try to login with the newly registered user
+      const loginResponse = await client.makeRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: testEmail,
+          password: testPassword
+        })
+      });
+
+      if (!loginResponse.ok || !loginResponse.data?.token) {
+        throw new Error('Login failed after registration');
+      }
+
+      // Store the token for subsequent requests
+      client.token = loginResponse.data.token;
+      return loginResponse.data;
+    }
   },
 
   // Test dashboard access

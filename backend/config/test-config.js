@@ -24,8 +24,8 @@ const testConfigs = {
     apiUrl: process.env.TEST_API_URL || 'https://test.yourdomain.com/api',
     testUsers: {
       admin: { 
-        email: process.env.TEST_ADMIN_EMAIL || 'admin@test.yourdomain.com', 
-        password: process.env.TEST_ADMIN_PASSWORD || 'admin123' 
+        email: process.env.TEST_USER_EMAIL || 'admin@example.com', 
+        password: process.env.TEST_USER_PASSWORD || 'admin123' 
       },
       user: { 
         email: process.env.TEST_USER_EMAIL || 'user@test.yourdomain.com', 
