@@ -141,7 +141,7 @@ jobs:
     if: ${{ github.event.inputs.run_unit_tests == 'true' }}
     strategy:
       matrix:
-        framework: ${{ fromJson('["' + github.event.inputs.unit_frameworks + '"]') }}
+        framework: [vitest, jest, ava]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -182,7 +182,7 @@ jobs:
     if: ${{ github.event.inputs.run_integration_tests == 'true' }}
     strategy:
       matrix:
-        framework: ${{ fromJson('["' + github.event.inputs.integration_frameworks + '"]') }}
+        framework: [vitest, supertest, tap]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -225,7 +225,7 @@ jobs:
     if: ${{ github.event.inputs.run_api_tests == 'true' }}
     strategy:
       matrix:
-        framework: ${{ fromJson('["' + github.event.inputs.api_frameworks + '"]') }}
+        framework: [supertest, karate, restassured]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -268,7 +268,7 @@ jobs:
     if: ${{ github.event.inputs.run_e2e_tests == 'true' }}
     strategy:
       matrix:
-        framework: ${{ fromJson('["' + github.event.inputs.e2e_frameworks + '"]') }}
+        framework: [playwright, cypress, selenium]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -327,7 +327,7 @@ jobs:
     if: ${{ github.event.inputs.run_performance_tests == 'true' }}
     strategy:
       matrix:
-        framework: ${{ fromJson('["' + github.event.inputs.performance_frameworks + '"]') }}
+        framework: [k6, jmeter, gatling]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -413,77 +413,83 @@ jobs:
         with:
           path: ./coverage/
 
-      - name: Parse all test results
-        run: |
-          node -e "
-          const { TestResultsParser } = require('./src/utils/testResultsParser.js');
-          const parser = new TestResultsParser();
-          
-          // Collect all test results
-          const allResults = [];
-          
-          // Parse unit test results
-          const unitFrameworks = '${{ github.event.inputs.unit_frameworks }}'.split(',');
-          unitFrameworks.forEach(framework => {
-            try {
-              const results = parser.parseResults(framework, 'unit', \`./coverage/\${framework}-results.json\`);
-              allResults.push(results);
-            } catch (error) {
-              console.log(\`No results for \${framework} unit tests\`);
-            }
-          });
-          
-          // Parse integration test results
-          const integrationFrameworks = '${{ github.event.inputs.integration_frameworks }}'.split(',');
-          integrationFrameworks.forEach(framework => {
-            try {
-              const results = parser.parseResults(framework, 'integration', \`./coverage/\${framework}-results.json\`);
-              allResults.push(results);
-            } catch (error) {
-              console.log(\`No results for \${framework} integration tests\`);
-            }
-          });
-          
-          // Parse API test results
-          const apiFrameworks = '${{ github.event.inputs.api_frameworks }}'.split(',');
-          apiFrameworks.forEach(framework => {
-            try {
-              const results = parser.parseResults(framework, 'api', \`./coverage/\${framework}-results.json\`);
-              allResults.push(results);
-            } catch (error) {
-              console.log(\`No results for \${framework} API tests\`);
-            }
-          });
-          
-          // Parse E2E test results
-          const e2eFrameworks = '${{ github.event.inputs.e2e_frameworks }}'.split(',');
-          e2eFrameworks.forEach(framework => {
-            try {
-              const results = parser.parseResults(framework, 'e2e', \`./coverage/\${framework}-results.json\`);
-              allResults.push(results);
-            } catch (error) {
-              console.log(\`No results for \${framework} E2E tests\`);
-            }
-          });
-          
-          // Parse performance test results
-          const performanceFrameworks = '${{ github.event.inputs.performance_frameworks }}'.split(',');
-          performanceFrameworks.forEach(framework => {
-            try {
-              const results = parser.parseResults(framework, 'performance', \`./reports/\${framework}-results.json\`);
-              allResults.push(results);
-            } catch (error) {
-              console.log(\`No results for \${framework} performance tests\`);
-            }
-          });
-          
-          // Generate unified report
-          const unifiedReport = parser.generateUnifiedReport(allResults);
-          
-          // Save unified report
-          require('fs').writeFileSync('./reports/unified-master-test-report.json', JSON.stringify(unifiedReport, null, 2));
-          console.log('Unified master test report generated');
-          "
+       - name: Parse all test results
+         env:
+           UNIT_FRAMEWORKS: vitest,jest,ava
+           INTEGRATION_FRAMEWORKS: vitest,supertest,tap
+           API_FRAMEWORKS: supertest,karate,restassured
+           E2E_FRAMEWORKS: playwright,cypress,selenium
+           PERFORMANCE_FRAMEWORKS: k6,jmeter,gatling
+         run: |
+           node -e "
+           const { TestResultsParser } = require('./src/utils/testResultsParser.js');
+           const parser = new TestResultsParser();
+           
+           // Collect all test results
+           const allResults = [];
+           
+           // Parse unit test results
+           const unitFrameworks = process.env.UNIT_FRAMEWORKS.split(',');
+           unitFrameworks.forEach(framework => {
+             try {
+               const results = parser.parseResults(framework, 'unit', \`./coverage/\${framework}-results.json\`);
+               allResults.push(results);
+             } catch (error) {
+               console.log(\`No results for \${framework} unit tests\`);
+             }
+           });
+           
+           // Parse integration test results
+           const integrationFrameworks = process.env.INTEGRATION_FRAMEWORKS.split(',');
+           integrationFrameworks.forEach(framework => {
+             try {
+               const results = parser.parseResults(framework, 'integration', \`./coverage/\${framework}-results.json\`);
+               allResults.push(results);
+             } catch (error) {
+               console.log(\`No results for \${framework} integration tests\`);
+             }
+           });
+           
+           // Parse API test results
+           const apiFrameworks = process.env.API_FRAMEWORKS.split(',');
+           apiFrameworks.forEach(framework => {
+             try {
+               const results = parser.parseResults(framework, 'api', \`./coverage/\${framework}-results.json\`);
+               allResults.push(results);
+             } catch (error) {
+               console.log(\`No results for \${framework} API tests\`);
+             }
+           });
+           
+           // Parse E2E test results
+           const e2eFrameworks = process.env.E2E_FRAMEWORKS.split(',');
+           e2eFrameworks.forEach(framework => {
+             try {
+               const results = parser.parseResults(framework, 'e2e', \`./coverage/\${framework}-results.json\`);
+               allResults.push(results);
+             } catch (error) {
+               console.log(\`No results for \${framework} E2E tests\`);
+             }
+           });
+           
+           // Parse performance test results
+           const performanceFrameworks = process.env.PERFORMANCE_FRAMEWORKS.split(',');
+           performanceFrameworks.forEach(framework => {
+             try {
+               const results = parser.parseResults(framework, 'performance', \`./reports/\${framework}-results.json\`);
+               allResults.push(results);
+             } catch (error) {
+               console.log(\`No results for \${framework} performance tests\`);
+             }
+           });
+           
+           // Generate unified report
+           const unifiedReport = parser.generateUnifiedReport(allResults);
+           
+           // Save unified report
+           require('fs').writeFileSync('./reports/unified-master-test-report.json', JSON.stringify(unifiedReport, null, 2));
+           console.log('Unified master test report generated');
+           "
 
       - name: Upload unified test report
         uses: actions/upload-artifact@v3
@@ -535,11 +541,11 @@ jobs:
             Success Rate: ${{ steps.results.outputs.success_rate }}%
             
             Test Types Run:
-            - Unit: ${{ github.event.inputs.unit_frameworks }}
-            - Integration: ${{ github.event.inputs.integration_frameworks }}
-            - API: ${{ github.event.inputs.api_frameworks }}
-            - E2E: ${{ github.event.inputs.e2e_frameworks }}
-            - Performance: ${{ github.event.inputs.performance_frameworks }}
+            - Unit: vitest, jest, ava
+            - Integration: vitest, supertest, tap
+            - API: supertest, karate, restassured
+            - E2E: playwright, cypress, selenium
+            - Performance: k6, jmeter, gatling
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -555,10 +561,10 @@ jobs:
             Success Rate: ${{ steps.results.outputs.success_rate }}%
             
             Test Types Run:
-            - Unit: ${{ github.event.inputs.unit_frameworks }}
-            - Integration: ${{ github.event.inputs.integration_frameworks }}
-            - API: ${{ github.event.inputs.api_frameworks }}
-            - E2E: ${{ github.event.inputs.e2e_frameworks }}
-            - Performance: ${{ github.event.inputs.performance_frameworks }}
+            - Unit: vitest, jest, ava
+            - Integration: vitest, supertest, tap
+            - API: supertest, karate, restassured
+            - E2E: playwright, cypress, selenium
+            - Performance: k6, jmeter, gatling
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
