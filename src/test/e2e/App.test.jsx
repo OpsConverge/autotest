@@ -2,6 +2,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '../utils/test-utils'
 import App from '../../App'
 
+// Mock localStorage for Node.js environment
+const localStorageMock = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+}
+global.localStorage = localStorageMock
+
+// Mock the TeamContext to prevent real API calls
+vi.mock('../../context/TeamContext', () => ({
+  useTeam: vi.fn(() => ({
+    teams: [],
+    activeTeam: null,
+    setActiveTeam: vi.fn(),
+    loading: false,
+    refreshTeams: vi.fn(),
+  })),
+  TeamProvider: ({ children }) => children,
+}))
+
 // Mock all the page components
 vi.mock('@/pages/index.jsx', () => ({
   default: () => (
@@ -30,7 +51,7 @@ vi.mock('@/components/ui/toaster', () => ({
 describe('App E2E', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
+    localStorageMock.clear()
   })
 
   it('renders the complete application', () => {
@@ -49,7 +70,7 @@ describe('App E2E', () => {
 
   it('handles authentication state changes', async () => {
     // Mock authenticated user
-    localStorage.getItem.mockReturnValue('mock-token')
+    localStorageMock.getItem.mockReturnValue('mock-token')
     
     render(<App />)
     
@@ -59,7 +80,7 @@ describe('App E2E', () => {
 
   it('handles unauthenticated state', () => {
     // Mock unauthenticated user
-    localStorage.getItem.mockReturnValue(null)
+    localStorageMock.getItem.mockReturnValue(null)
     
     render(<App />)
     

@@ -165,7 +165,7 @@ describe('E2E Tests - Test Environment', () => {
       } else if (contentType && contentType.includes('text/plain')) {
         // Deployed environment returns plain text
         const text = await response.text()
-        expect(text).toBe('healthy') // Deployed environment returns "healthy"
+        expect(text.trim()).toBe('healthy') // Deployed environment returns "healthy" (with possible whitespace/newlines)
       } else {
         // If neither JSON nor plain text, log the response for debugging
         const text = await response.text()
