@@ -185,7 +185,7 @@ jobs:
 
       - name: Run API integration tests against test environment
         run: |
-          node scripts/run-tests.js test
+          cd backend && node scripts/run-tests.js test
         env:
           TEST_TARGET_URL: ${{ env.TEST_ENVIRONMENT_URL }}
           TEST_API_URL: ${{ env.TEST_ENVIRONMENT_URL }}/api
