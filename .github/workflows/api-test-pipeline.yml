@@ -1,20 +1,20 @@
-name: API Test Pipeline (Supertest + Karate + REST Assured)
+name: API Test Pipeline (Postman/Newman + REST Assured + Karate)
 
 on:
   workflow_dispatch:
     inputs:
-      run_supertest:
-        description: 'Run Supertest API tests'
-        required: false
-        default: true
-        type: boolean
-      run_karate:
-        description: 'Run Karate-style API tests'
+      run_postman:
+        description: 'Run Postman/Newman API tests'
         required: false
         default: true
         type: boolean
       run_restassured:
-        description: 'Run REST Assured-style API tests'
+        description: 'Run REST Assured API tests'
+        required: false
+        default: true
+        type: boolean
+      run_karate:
+        description: 'Run Karate API tests'
         required: false
         default: true
         type: boolean
@@ -61,11 +61,11 @@ jobs:
             sleep 2
           done
 
-  api-tests-supertest:
-    name: API Tests (Supertest)
+  api-tests-postman:
+    name: API Tests (Postman/Newman)
     runs-on: ubuntu-latest
     needs: setup-backend
-    if: ${{ github.event.inputs.run_supertest == 'true' }}
+    if: ${{ github.event.inputs.run_postman == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -79,48 +79,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Supertest API tests
-        run: npm run test:api:supertest
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Run Postman/Newman API tests
+        run: npm run test:api:postman
         env:
           TEST_API_URL: ${{ github.event.inputs.backend_url }}
 
       - name: Upload test results
         uses: actions/upload-artifact@v3
         with:
-          name: supertest-api-results
-          path: ./coverage/supertest-api-results.json
-
-  api-tests-karate:
-    name: API Tests (Karate-style)
-    runs-on: ubuntu-latest
-    needs: setup-backend
-    if: ${{ github.event.inputs.run_karate == 'true' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run Karate-style API tests
-        run: npm run test:api:karate
-        env:
-          TEST_API_URL: ${{ github.event.inputs.backend_url }}
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v3
-        with:
-          name: karate-api-results
-          path: ./coverage/karate-api-results.json
+          name: postman-api-results
+          path: ./newman-results.json
 
   api-tests-restassured:
-    name: API Tests (REST Assured-style)
+    name: API Tests (REST Assured)
     runs-on: ubuntu-latest
     needs: setup-backend
     if: ${{ github.event.inputs.run_restassured == 'true' }}
@@ -128,16 +102,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Java
+        uses: actions/setup-java@v3
         with:
-          node-version: '18'
-          cache: 'npm'
+          distribution: 'temurin'
+          java-version: '11'
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run REST Assured-style API tests
+      - name: Run REST Assured API tests
         run: npm run test:api:restassured
         env:
           TEST_API_URL: ${{ github.event.inputs.backend_url }}
@@ -146,6 +117,32 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: restassured-api-results
-          path: ./coverage/restassured-api-results.json
+          path: ./target/surefire-reports/
+
+  api-tests-karate:
+    name: API Tests (Karate)
+    runs-on: ubuntu-latest
+    needs: setup-backend
+    if: ${{ github.event.inputs.run_karate == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Run Karate API tests
+        run: npm run test:api:karate
+        env:
+          TEST_API_URL: ${{ github.event.inputs.backend_url }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: karate-api-results
+          path: ./target/surefire-reports/
 
 

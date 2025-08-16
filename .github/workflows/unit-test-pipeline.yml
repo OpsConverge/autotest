@@ -1,20 +1,20 @@
-name: Unit Test Pipeline (Vitest + Jest + AVA)
+name: Unit Test Pipeline (Jest + JUnit 5 + pytest)
 
 on:
   workflow_dispatch:
     inputs:
-      run_vitest:
-        description: 'Run Vitest unit tests'
-        required: false
-        default: true
-        type: boolean
       run_jest:
         description: 'Run Jest unit tests'
         required: false
         default: true
         type: boolean
-      run_ava:
-        description: 'Run AVA unit tests'
+      run_junit:
+        description: 'Run JUnit 5 unit tests'
+        required: false
+        default: true
+        type: boolean
+      run_pytest:
+        description: 'Run pytest unit tests'
         required: false
         default: true
         type: boolean
@@ -25,38 +25,6 @@ on:
         type: boolean
 
 jobs:
-  unit-tests-vitest:
-    name: Unit Tests (Vitest)
-    runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.run_vitest == 'true' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run Vitest unit tests
-        run: npm run test:unit
-
-      - name: Run Vitest coverage
-        if: ${{ github.event.inputs.run_coverage == 'true' }}
-        run: npm run test:coverage
-
-      - name: Upload coverage reports
-        if: ${{ github.event.inputs.run_coverage == 'true' }}
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage/lcov.info
-          flags: vitest-unit
-          name: vitest-unit-coverage
-
   unit-tests-jest:
     name: Unit Tests (Jest)
     runs-on: ubuntu-latest
@@ -89,37 +57,55 @@ jobs:
           flags: jest-unit
           name: jest-unit-coverage
 
-  unit-tests-ava:
-    name: Unit Tests (AVA)
+  unit-tests-junit:
+    name: Unit Tests (JUnit 5)
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.run_ava == 'true' }}
+    if: ${{ github.event.inputs.run_junit == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Java
+        uses: actions/setup-java@v3
         with:
-          node-version: '18'
-          cache: 'npm'
+          distribution: 'temurin'
+          java-version: '11'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Run JUnit 5 unit tests
+        run: npm run test:unit:junit
 
-      - name: Run AVA unit tests
-        run: npm run test:unit:ava
-
-      - name: Run AVA coverage
-        if: ${{ github.event.inputs.run_coverage == 'true' }}
-        run: npm run test:coverage:ava
-
-      - name: Upload coverage reports
-        if: ${{ github.event.inputs.run_coverage == 'true' }}
-        uses: codecov/codecov-action@v3
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
         with:
-          file: ./coverage/lcov.info
-          flags: ava-unit
-          name: ava-unit-coverage
+          name: junit-unit-results
+          path: ./target/surefire-reports/
+
+  unit-tests-pytest:
+    name: Unit Tests (pytest)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.run_pytest == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Python dependencies
+        run: |
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+
+      - name: Run pytest unit tests
+        run: npm run test:unit:pytest
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: pytest-unit-results
+          path: ./pytest-results.xml
 
 
 

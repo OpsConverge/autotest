@@ -2,10 +2,10 @@ name: CI/CD Pipeline - Test Management App
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main, develop, master ]
-  pull_request:
-    branches: [ main, develop, master ]
+  # push:
+  #   branches: [ main, develop, master ]
+  # pull_request:
+  #   branches: [ main, develop, master ]
 
 env:
   NODE_VERSION: '18'

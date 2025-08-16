@@ -1,284 +1,298 @@
-# Test Pipeline Architecture Guide
+# Test Management Application - CI/CD Pipeline Guide
 
 ## Overview
 
-This project implements a comprehensive testing strategy with **dedicated pipelines for each test type** and **3 different frameworks per test type** for redundancy, different strengths, and comprehensive coverage.
+This document provides a comprehensive guide to the CI/CD pipeline architecture for the Test Management Application. The pipeline is designed to support multiple test frameworks across different test types, providing comprehensive coverage and flexibility.
 
-## Pipeline Structure
+## Pipeline Architecture
 
-### 🧪 **Unit Test Pipeline** (`unit-test-pipeline.yml`)
-**Frameworks:** Vitest, Jest, AVA
+### 1. Unit Test Pipeline (`unit-test-pipeline.yml`)
+**Frameworks**: Jest (JS/TS), JUnit 5 (Java), pytest (Python)
 
-**Purpose:** Test individual components, functions, and utilities in isolation.
+**Purpose**: Test individual components and functions in isolation.
 
-**Frameworks:**
-- **Vitest**: Fast, modern test runner with excellent Vite integration
-- **Jest**: Industry standard with extensive ecosystem
-- **AVA**: Parallel test execution with minimal configuration
+**Features**:
+- **Jest**: JavaScript/TypeScript unit testing with mocking and coverage
+- **JUnit 5**: Java unit testing with modern annotations and assertions
+- **pytest**: Python unit testing with fixtures and parametrization
 
-**Usage:**
+**Usage**:
 ```bash
-# Run all unit test frameworks
-gh workflow run unit-test-pipeline.yml
+# Run all unit tests
+npm run test:pipeline:unit
 
-# Run specific frameworks
-gh workflow run unit-test-pipeline.yml -f run_vitest=true -f run_jest=false -f run_ava=true
+# Run specific framework
+npm run test:unit:jest
+npm run test:unit:junit
+npm run test:unit:pytest
 ```
 
-### 🔗 **Integration Test Pipeline** (`integration-test-pipeline.yml`)
-**Frameworks:** Vitest, Supertest, TAP
+### 2. Integration Test Pipeline (`integration-test-pipeline.yml`)
+**Frameworks**: Supertest (Node.js), Spring Boot Test (Java), pytest + requests (Python)
 
-**Purpose:** Test component interactions, API integrations, and data flow.
+**Purpose**: Test component interactions and API endpoints.
 
-**Frameworks:**
-- **Vitest**: Component integration testing with React Testing Library
-- **Supertest**: HTTP assertions for API testing
-- **TAP**: Simple, standardized test output format
+**Features**:
+- **Supertest**: Node.js HTTP assertions for API testing
+- **Spring Boot Test**: Java integration testing with embedded containers
+- **pytest + requests**: Python integration testing with HTTP client
 
-**Usage:**
+**Usage**:
 ```bash
-# Run all integration test frameworks
-gh workflow run integration-test-pipeline.yml
+# Run all integration tests
+npm run test:pipeline:integration
 
-# Run with custom backend URL
-gh workflow run integration-test-pipeline.yml -f backend_url=https://api.example.com
+# Run specific framework
+npm run test:integration:supertest
+npm run test:integration:springboot
+npm run test:integration:pytest
 ```
 
-### 🌐 **API Test Pipeline** (`api-test-pipeline.yml`)
-**Frameworks:** Supertest, Karate-style, REST Assured-style
+### 3. API Test Pipeline (`api-test-pipeline.yml`)
+**Frameworks**: Postman/Newman, REST Assured (Java), Karate
 
-**Purpose:** Test API endpoints, contracts, and backend services.
+**Purpose**: Comprehensive API testing with different approaches.
 
-**Frameworks:**
-- **Supertest**: Node.js HTTP assertions with Express integration
-- **Karate-style**: BDD-style API testing with readable scenarios
-- **REST Assured-style**: Given-When-Then structure for API validation
+**Features**:
+- **Postman/Newman**: Collection-based API testing with CLI execution
+- **REST Assured**: Java-based API testing with fluent assertions
+- **Karate**: BDD-style API testing with built-in assertions
 
-**Usage:**
+**Usage**:
 ```bash
-# Run all API test frameworks
-gh workflow run api-test-pipeline.yml
+# Run all API tests
+npm run test:pipeline:api
 
-# Run specific API test types
-gh workflow run api-test-pipeline.yml -f run_supertest=true -f run_karate=false
+# Run specific framework
+npm run test:api:postman
+npm run test:api:restassured
+npm run test:api:karate
 ```
 
-### 🖥️ **E2E Test Pipeline** (`e2e-test-pipeline.yml`)
-**Frameworks:** Playwright, Cypress, Selenium
+### 4. E2E Test Pipeline (`e2e-test-pipeline.yml`)
+**Frameworks**: Playwright, Cypress, Selenium WebDriver
 
-**Purpose:** Test complete user workflows and application behavior.
+**Purpose**: End-to-end testing of the complete application.
 
-**Frameworks:**
-- **Playwright**: Modern, fast browser automation with multiple browser support
-- **Cypress**: Developer-friendly E2E testing with real-time feedback
-- **Selenium**: Industry standard with extensive browser support
+**Features**:
+- **Playwright**: Modern browser automation with multi-browser support
+- **Cypress**: JavaScript-based E2E testing with real-time feedback
+- **Selenium WebDriver**: Cross-platform browser automation
 
-**Usage:**
+**Usage**:
 ```bash
-# Run all E2E test frameworks
-gh workflow run e2e-test-pipeline.yml
+# Run all E2E tests
+npm run test:pipeline:e2e
 
-# Run with custom target URL
-gh workflow run e2e-test-pipeline.yml -f target_url=https://staging.example.com
+# Run specific framework
+npm run test:e2e:playwright
+npm run test:e2e:cypress
+npm run test:e2e:selenium
 ```
 
-### ⚡ **Performance Test Pipeline** (`performance-test-pipeline.yml`)
-**Frameworks:** k6, JMeter, Gatling
+### 5. Performance Test Pipeline (`performance-test-pipeline.yml`)
+**Frameworks**: k6, JMeter, Gatling
 
-**Purpose:** Test application performance, load handling, and scalability.
+**Purpose**: Load testing and performance validation.
 
-**Frameworks:**
-- **k6**: Modern, developer-friendly performance testing
-- **JMeter**: Industry standard with extensive protocol support
-- **Gatling**: High-performance load testing with Scala DSL
+**Features**:
+- **k6**: Modern load testing with JavaScript scripting
+- **JMeter**: Apache JMeter for comprehensive load testing
+- **Gatling**: Scala-based performance testing framework
 
-**Usage:**
+**Usage**:
 ```bash
-# Run all performance test frameworks
-gh workflow run performance-test-pipeline.yml
+# Run all performance tests
+npm run test:pipeline:performance
 
-# Run with custom load parameters
-gh workflow run performance-test-pipeline.yml \
-  -f concurrent_users=50 \
-  -f test_duration=10
+# Run specific framework
+npm run test:performance:k6
+npm run test:performance:jmeter
+npm run test:performance:gatling
 ```
 
-### 🎯 **Master Test Pipeline** (`master-test-pipeline.yml`)
-**Purpose:** Orchestrate all test types and frameworks in a single pipeline.
+### 6. Master Test Pipeline (`master-test-pipeline.yml`)
+**Purpose**: Orchestrates all test types and frameworks in a single pipeline.
 
-**Features:**
-- **Selective Execution**: Choose which test types to run
-- **Framework Selection**: Pick specific frameworks per test type
-- **Environment Configuration**: Set target URLs and test parameters
-- **Unified Reporting**: Combine results from all frameworks
-- **Slack Notifications**: Real-time status updates
-
-**Usage:**
-```bash
-# Run all tests with all frameworks
-gh workflow run master-test-pipeline.yml
-
-# Run only unit and E2E tests
-gh workflow run master-test-pipeline.yml \
-  -f run_unit_tests=true \
-  -f run_integration_tests=false \
-  -f run_api_tests=false \
-  -f run_e2e_tests=true \
-  -f run_performance_tests=false
-
-# Run with specific frameworks
-gh workflow run master-test-pipeline.yml \
-  -f unit_frameworks=vitest,jest \
-  -f e2e_frameworks=playwright,cypress
-```
+**Features**:
+- Matrix strategy for parallel execution
+- Selective framework execution
+- Comprehensive artifact collection
+- Unified reporting
 
 ## Framework Comparison
 
 ### Unit Testing Frameworks
 
-| Framework | Speed | Ecosystem | Learning Curve | Parallel Execution |
-|-----------|-------|-----------|----------------|-------------------|
-| **Vitest** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ✅ |
-| **Jest** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ✅ |
-| **AVA** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ✅ |
+| Framework | Language | Strengths | Use Cases |
+|-----------|----------|-----------|-----------|
+| **Jest** | JavaScript/TypeScript | Fast, built-in mocking, coverage | React components, Node.js modules |
+| **JUnit 5** | Java | Modern annotations, parameterized tests | Java services, utilities |
+| **pytest** | Python | Fixtures, parametrization, plugins | Python modules, data processing |
 
 ### Integration Testing Frameworks
 
-| Framework | HTTP Testing | Component Testing | Debugging | Setup |
-|-----------|-------------|-------------------|-----------|-------|
-| **Vitest** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Supertest** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **TAP** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| Framework | Language | Strengths | Use Cases |
+|-----------|----------|-----------|-----------|
+| **Supertest** | Node.js | HTTP assertions, Express integration | API endpoints, middleware |
+| **Spring Boot Test** | Java | Embedded containers, auto-configuration | Spring Boot applications |
+| **pytest + requests** | Python | HTTP client, flexible assertions | API testing, microservices |
 
 ### API Testing Frameworks
 
-| Framework | Readability | BDD Support | Assertions | Maintenance |
-|-----------|-------------|-------------|------------|-------------|
-| **Supertest** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Karate-style** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **REST Assured-style** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| Framework | Language | Strengths | Use Cases |
+|-----------|----------|-----------|-----------|
+| **Postman/Newman** | Collection-based | Visual editor, CLI execution | API documentation, manual testing |
+| **REST Assured** | Java | Fluent API, JSONPath | REST API validation, contract testing |
+| **Karate** | Java | BDD syntax, built-in assertions | API scenarios, data-driven testing |
 
 ### E2E Testing Frameworks
 
-| Framework | Speed | Browser Support | Debugging | CI/CD |
-|-----------|-------|-----------------|-----------|-------|
-| **Playwright** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Cypress** | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Selenium** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
+| Framework | Language | Strengths | Use Cases |
+|-----------|----------|-----------|-----------|
+| **Playwright** | JavaScript | Multi-browser, modern APIs | Cross-browser testing, mobile |
+| **Cypress** | JavaScript | Real-time feedback, debugging | Frontend testing, user flows |
+| **Selenium** | Multiple | Cross-platform, mature ecosystem | Legacy applications, browser automation |
 
-### Performance Testing Frameworks
-
-| Framework | Protocol Support | Scalability | Reporting | Learning Curve |
-|-----------|------------------|-------------|-----------|----------------|
-| **k6** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **JMeter** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| **Gatling** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ |
-
-## Test Results Parsing
-
-All pipelines use the `TestResultsParser` utility to:
-
-1. **Parse Results**: Convert framework-specific outputs to unified format
-2. **Combine Data**: Aggregate results from multiple frameworks
-3. **Generate Reports**: Create comprehensive test reports
-4. **Format for Display**: Prepare data for UI consumption
-
-### Supported Output Formats
-
-- **JSON**: Machine-readable structured data
-- **HTML**: Human-readable reports with charts
-- **JUnit XML**: CI/CD integration
-- **Slack Notifications**: Real-time status updates
-
-## Configuration Options
+## Pipeline Configuration
 
 ### Environment Variables
 
-```bash
-# Test URLs
-TEST_TARGET_URL=http://localhost:5173
-TEST_API_URL=http://localhost:4000
+Each pipeline supports configurable environment variables:
 
-# Performance Test Parameters
-TEST_DURATION=5
-CONCURRENT_USERS=10
+```yaml
+# Unit Tests
+NODE_ENV: test
+JAVA_HOME: /usr/lib/jvm/java-11-openjdk
+PYTHON_VERSION: 3.9
 
-# Framework Selection
-UNIT_FRAMEWORKS=vitest,jest,ava
-INTEGRATION_FRAMEWORKS=vitest,supertest,tap
-API_FRAMEWORKS=supertest,karate,restassured
-E2E_FRAMEWORKS=playwright,cypress,selenium
-PERFORMANCE_FRAMEWORKS=k6,jmeter,gatling
+# Integration Tests
+TEST_API_URL: http://localhost:4000
+BACKEND_URL: http://localhost:4000
+
+# API Tests
+API_BASE_URL: http://localhost:4000/api
+NEWMAN_ENVIRONMENT: test
+
+# E2E Tests
+TEST_TARGET_URL: http://localhost:5173
+CYPRESS_baseUrl: http://localhost:5173
+
+# Performance Tests
+TEST_DURATION: 5
+CONCURRENT_USERS: 10
 ```
 
-### Pipeline Inputs
+### Workflow Inputs
 
-Each pipeline supports workflow dispatch inputs for:
+All pipelines support `workflow_dispatch` inputs for selective execution:
 
-- **Framework Selection**: Choose which frameworks to run
-- **Environment Configuration**: Set target URLs and parameters
-- **Reporting Options**: Enable/disable coverage and notifications
-- **Test Parameters**: Configure duration, users, etc.
+```yaml
+workflow_dispatch:
+  inputs:
+    run_jest:
+      description: 'Run Jest unit tests'
+      default: true
+      type: boolean
+    run_junit:
+      description: 'Run JUnit 5 unit tests'
+      default: true
+      type: boolean
+    # ... more inputs
+```
+
+## Test Scripts
+
+### Package.json Scripts
+
+The application includes comprehensive npm scripts for all test types:
+
+```json
+{
+  "scripts": {
+    "test:unit:jest": "jest src/test/unit-jest/",
+    "test:unit:junit": "mvn test -Dtest=**/unit/**",
+    "test:unit:pytest": "pytest src/test/unit-pytest/",
+    "test:integration:supertest": "vitest run src/test/integration-supertest/",
+    "test:integration:springboot": "mvn test -Dtest=**/integration/**",
+    "test:integration:pytest": "pytest src/test/integration-pytest/",
+    "test:api:postman": "newman run src/test/api-postman/collection.json",
+    "test:api:restassured": "mvn test -Dtest=**/api/**",
+    "test:api:karate": "mvn test -Dtest=**/karate/**",
+    "test:e2e:playwright": "playwright test",
+    "test:e2e:cypress": "cypress run",
+    "test:e2e:selenium": "vitest run src/test/e2e-selenium/",
+    "test:pipeline:unit": "npm run test:unit:jest && npm run test:unit:junit && npm run test:unit:pytest",
+    "test:pipeline:integration": "npm run test:integration:supertest && npm run test:integration:springboot && npm run test:integration:pytest",
+    "test:pipeline:api": "npm run test:api:postman && npm run test:api:restassured && npm run test:api:karate",
+    "test:pipeline:e2e": "npm run test:e2e:playwright && npm run test:e2e:cypress && npm run test:e2e:selenium"
+  }
+}
+```
 
 ## Best Practices
 
-### 1. **Framework Selection**
-- Use **Vitest** for fast development feedback
-- Use **Jest** for comprehensive testing with extensive ecosystem
-- Use **AVA** for parallel execution of simple tests
+### 1. Test Organization
+- Organize tests by framework and type
+- Use consistent naming conventions
+- Separate test data from test logic
 
-### 2. **Pipeline Strategy**
-- Run **unit tests** on every commit
-- Run **integration tests** on pull requests
-- Run **API tests** when backend changes
-- Run **E2E tests** before deployment
-- Run **performance tests** on release candidates
+### 2. Pipeline Execution
+- Run unit tests first (fastest feedback)
+- Execute integration tests after unit tests
+- Run API tests with backend dependencies
+- Execute E2E tests last (slowest)
 
-### 3. **Result Analysis**
-- Compare results across frameworks for consistency
-- Use unified reports for trend analysis
-- Set up alerts for performance regressions
-- Monitor test execution times
+### 3. Artifact Management
+- Upload test results as artifacts
+- Generate coverage reports
+- Store performance metrics
+- Archive test logs
 
-### 4. **Maintenance**
-- Keep frameworks updated
-- Standardize test patterns across frameworks
-- Document framework-specific configurations
-- Regular review of test coverage
+### 4. Error Handling
+- Implement proper error handling in tests
+- Use appropriate timeouts
+- Handle flaky tests gracefully
+- Provide meaningful error messages
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Framework Conflicts**: Ensure proper isolation between test environments
-2. **Resource Limits**: Monitor CI/CD resource usage for performance tests
-3. **Browser Compatibility**: Test E2E frameworks across different browsers
-4. **API Dependencies**: Ensure backend services are available for integration tests
+1. **Backend Connection Issues**
+   - Verify backend is running
+   - Check port configurations
+   - Ensure health endpoints are accessible
+
+2. **Framework-Specific Issues**
+   - Check framework versions
+   - Verify dependencies are installed
+   - Review framework configuration files
+
+3. **Pipeline Failures**
+   - Check GitHub Actions logs
+   - Verify workflow syntax
+   - Review environment variables
 
 ### Debugging Tips
 
-1. **Enable Verbose Logging**: Use `--verbose` flags for detailed output
-2. **Check Artifacts**: Download test results for analysis
-3. **Review Notifications**: Check Slack for detailed failure information
-4. **Compare Frameworks**: Use unified reports to identify framework-specific issues
+1. **Local Testing**
+   - Run tests locally before pushing
+   - Use framework-specific debug modes
+   - Check test environment setup
 
-## Future Enhancements
+2. **Log Analysis**
+   - Review test output logs
+   - Check artifact contents
+   - Analyze error messages
 
-### Planned Features
+3. **Performance Issues**
+   - Monitor resource usage
+   - Check test execution times
+   - Optimize test data and setup
 
-1. **Test Parallelization**: Run frameworks in parallel for faster execution
-2. **Smart Framework Selection**: Automatically choose optimal frameworks based on test type
-3. **Advanced Reporting**: Interactive dashboards with historical trends
-4. **Framework Migration**: Tools to convert tests between frameworks
-5. **Performance Baselines**: Automatic performance regression detection
+## Conclusion
 
-### Integration Opportunities
+This pipeline architecture provides a comprehensive testing solution that supports multiple frameworks and test types. The modular design allows for flexible execution and easy maintenance, while the unified approach ensures consistent quality across all test types.
 
-1. **Test Management Tools**: Integration with TestRail, Zephyr, etc.
-2. **Monitoring Platforms**: Connect with Datadog, New Relic, etc.
-3. **Issue Tracking**: Automatic ticket creation for test failures
-4. **Deployment Gates**: Block deployments based on test results
-
----
-
-This architecture provides a robust, scalable testing foundation that leverages the strengths of multiple frameworks while maintaining consistency and reliability across all test types.
+For questions or issues, please refer to the individual framework documentation or contact the development team.

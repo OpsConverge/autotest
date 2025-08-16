@@ -9,35 +9,35 @@ on:
         required: false
         default: true
         type: boolean
-      unit_frameworks:
-        description: 'Unit test frameworks to run'
-        required: false
-        default: 'vitest,jest,ava'
-        type: string
-      
-      # Integration Tests
-      run_integration_tests:
-        description: 'Run all integration tests'
-        required: false
-        default: true
-        type: boolean
-      integration_frameworks:
-        description: 'Integration test frameworks to run'
-        required: false
-        default: 'vitest,supertest,tap'
-        type: string
-      
-      # API Tests
-      run_api_tests:
-        description: 'Run all API tests'
-        required: false
-        default: true
-        type: boolean
-      api_frameworks:
-        description: 'API test frameworks to run'
-        required: false
-        default: 'supertest,karate,restassured'
-        type: string
+             unit_frameworks:
+         description: 'Unit test frameworks to run'
+         required: false
+         default: 'jest,junit,pytest'
+         type: string
+       
+       # Integration Tests
+       run_integration_tests:
+         description: 'Run all integration tests'
+         required: false
+         default: true
+         type: boolean
+       integration_frameworks:
+         description: 'Integration test frameworks to run'
+         required: false
+         default: 'supertest,springboot,pytest'
+         type: string
+       
+       # API Tests
+       run_api_tests:
+         description: 'Run all API tests'
+         required: false
+         default: true
+         type: boolean
+       api_frameworks:
+         description: 'API test frameworks to run'
+         required: false
+         default: 'postman,restassured,karate'
+         type: string
       
       # E2E Tests
       run_e2e_tests:
@@ -141,7 +141,7 @@ jobs:
     if: ${{ github.event.inputs.run_unit_tests == 'true' }}
     strategy:
       matrix:
-        framework: [vitest, jest, ava]
+        framework: [jest, junit, pytest]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -155,19 +155,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ${{ matrix.framework }} unit tests
-        run: |
-          case "${{ matrix.framework }}" in
-            "vitest")
-              npm run test:unit
-              ;;
-            "jest")
-              npm run test:unit:jest
-              ;;
-            "ava")
-              npm run test:unit:ava
-              ;;
-          esac
+             - name: Run ${{ matrix.framework }} unit tests
+         run: |
+           case "${{ matrix.framework }}" in
+             "jest")
+               npm run test:unit:jest
+               ;;
+             "junit")
+               npm run test:unit:junit
+               ;;
+             "pytest")
+               npm run test:unit:pytest
+               ;;
+           esac
 
       - name: Upload ${{ matrix.framework }} unit test results
         uses: actions/upload-artifact@v3
@@ -182,7 +182,7 @@ jobs:
     if: ${{ github.event.inputs.run_integration_tests == 'true' }}
     strategy:
       matrix:
-        framework: [vitest, supertest, tap]
+        framework: [supertest, springboot, pytest]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -196,19 +196,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ${{ matrix.framework }} integration tests
-        run: |
-          case "${{ matrix.framework }}" in
-            "vitest")
-              npm run test:integration
-              ;;
-            "supertest")
-              npm run test:integration:supertest
-              ;;
-            "tap")
-              npm run test:integration:tap
-              ;;
-          esac
+             - name: Run ${{ matrix.framework }} integration tests
+         run: |
+           case "${{ matrix.framework }}" in
+             "supertest")
+               npm run test:integration:supertest
+               ;;
+             "springboot")
+               npm run test:integration:springboot
+               ;;
+             "pytest")
+               npm run test:integration:pytest
+               ;;
+           esac
         env:
           TEST_API_URL: ${{ github.event.inputs.backend_url }}
 
@@ -225,7 +225,7 @@ jobs:
     if: ${{ github.event.inputs.run_api_tests == 'true' }}
     strategy:
       matrix:
-        framework: [supertest, karate, restassured]
+        framework: [postman, restassured, karate]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -239,19 +239,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ${{ matrix.framework }} API tests
-        run: |
-          case "${{ matrix.framework }}" in
-            "supertest")
-              npm run test:api:supertest
-              ;;
-            "karate")
-              npm run test:api:karate
-              ;;
-            "restassured")
-              npm run test:api:restassured
-              ;;
-          esac
+             - name: Run ${{ matrix.framework }} API tests
+         run: |
+           case "${{ matrix.framework }}" in
+             "postman")
+               npm run test:api:postman
+               ;;
+             "restassured")
+               npm run test:api:restassured
+               ;;
+             "karate")
+               npm run test:api:karate
+               ;;
+           esac
         env:
           TEST_API_URL: ${{ github.event.inputs.backend_url }}
 
