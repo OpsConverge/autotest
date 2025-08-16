@@ -1,4 +1,4 @@
-name: CI/CD Pipeline 2 - Java Focus
+name: CI/CD Pipeline-Java Focus
 
 on:
   workflow_dispatch:

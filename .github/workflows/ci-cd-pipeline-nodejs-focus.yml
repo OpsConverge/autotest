@@ -1,25 +1,25 @@
-name: CI/CD Pipeline 3 - Python Focus
+name: CI/CD Pipeline-Nodejs Focus
 
 on:
   workflow_dispatch:
     inputs:
       run_unit_tests:
-        description: 'Run Unit Tests (pytest)'
+        description: 'Run Unit Tests (Jest)'
         required: false
         default: true
         type: boolean
       run_integration_tests:
-        description: 'Run Integration Tests (pytest + requests)'
+        description: 'Run Integration Tests (Supertest)'
         required: false
         default: true
         type: boolean
       run_api_tests:
-        description: 'Run API Tests (Karate)'
+        description: 'Run API Tests (Postman/Newman)'
         required: false
         default: true
         type: boolean
       run_e2e_tests:
-        description: 'Run E2E Tests (Selenium WebDriver)'
+        description: 'Run E2E Tests (Playwright)'
         required: false
         default: true
         type: boolean
@@ -71,8 +71,8 @@ jobs:
             sleep 2
           done
 
-  unit-tests-pytest:
-    name: Unit Tests (pytest)
+  unit-tests-jest:
+    name: Unit Tests (Jest)
     runs-on: ubuntu-latest
     needs: setup-backend
     if: ${{ github.event.inputs.run_unit_tests == 'true' }}
@@ -80,38 +80,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.9'
+          node-version: '18'
+          cache: 'npm'
 
-      - name: Install Python dependencies
-        run: |
-          pip install -r requirements.txt
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Run pytest unit tests
+      - name: Run Jest unit tests
         run: |
           if [ "${{ github.event.inputs.test_flakiness }}" = "true" ]; then
-            echo "Running pytest tests with flakiness simulation..."
-            npm run test:unit:pytest:mock
+            echo "Running Jest tests with flakiness simulation..."
+            npm run test:unit:jest:mock
           else
-            echo "Running pytest tests normally..."
-            npm run test:unit:pytest
+            echo "Running Jest tests normally..."
+            npm run test:unit:jest
           fi
         env:
           ENABLE_FLAKINESS: ${{ github.event.inputs.test_flakiness }}
 
-      - name: Upload pytest test results
+      - name: Upload Jest test results
         uses: actions/upload-artifact@v3
         with:
-          name: pytest-unit-results
+          name: jest-unit-results
           path: |
-            ./pytest-results.xml
-            ./coverage/pytest-coverage.json
-            ./htmlcov/
+            ./coverage/jest-results.json
+            ./coverage/lcov.info
+            ./coverage/jest-coverage.json
 
-  integration-tests-pytest:
-    name: Integration Tests (pytest + requests)
+  integration-tests-supertest:
+    name: Integration Tests (Supertest)
     runs-on: ubuntu-latest
     needs: setup-backend
     if: ${{ github.event.inputs.run_integration_tests == 'true' }}
@@ -119,38 +119,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.9'
+          node-version: '18'
+          cache: 'npm'
 
-      - name: Install Python dependencies
-        run: |
-          pip install -r requirements.txt
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Run pytest integration tests
+      - name: Run Supertest integration tests
         run: |
           if [ "${{ github.event.inputs.test_flakiness }}" = "true" ]; then
-            echo "Running pytest integration tests with flakiness simulation..."
-            npm run test:integration:pytest:mock
+            echo "Running Supertest tests with flakiness simulation..."
+            npm run test:integration:supertest:mock
           else
-            echo "Running pytest integration tests normally..."
-            npm run test:integration:pytest
+            echo "Running Supertest tests normally..."
+            npm run test:integration:supertest
           fi
         env:
           TEST_API_URL: ${{ github.event.inputs.backend_url }}
           ENABLE_FLAKINESS: ${{ github.event.inputs.test_flakiness }}
 
-      - name: Upload pytest integration test results
+      - name: Upload Supertest test results
         uses: actions/upload-artifact@v3
         with:
-          name: pytest-integration-results
+          name: supertest-integration-results
           path: |
-            ./pytest-integration-results.xml
-            ./coverage/pytest-integration-coverage.json
+            ./coverage/supertest-results.json
+            ./coverage/supertest-coverage.json
 
-  api-tests-karate:
-    name: API Tests (Karate)
+  api-tests-postman:
+    name: API Tests (Postman/Newman)
     runs-on: ubuntu-latest
     needs: setup-backend
     if: ${{ github.event.inputs.run_api_tests == 'true' }}
@@ -158,35 +158,41 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          distribution: 'temurin'
-          java-version: '11'
+          node-version: '18'
+          cache: 'npm'
 
-      - name: Run Karate API tests
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Run Postman/Newman API tests
         run: |
           if [ "${{ github.event.inputs.test_flakiness }}" = "true" ]; then
-            echo "Running Karate tests with flakiness simulation..."
-            npm run test:api:karate:mock
+            echo "Running Postman tests with flakiness simulation..."
+            npm run test:api:postman:mock
           else
-            echo "Running Karate tests normally..."
-            npm run test:api:karate
+            echo "Running Postman tests normally..."
+            npm run test:api:postman
           fi
         env:
           TEST_API_URL: ${{ github.event.inputs.backend_url }}
           ENABLE_FLAKINESS: ${{ github.event.inputs.test_flakiness }}
 
-      - name: Upload Karate test results
+      - name: Upload Postman test results
         uses: actions/upload-artifact@v3
         with:
-          name: karate-api-results
+          name: postman-api-results
           path: |
-            ./target/surefire-reports/
-            ./target/karate-results.xml
+            ./newman-results.json
+            ./coverage/postman-results.json
 
-  e2e-tests-selenium:
-    name: E2E Tests (Selenium WebDriver)
+  e2e-tests-playwright:
+    name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
     needs: setup-backend
     if: ${{ github.event.inputs.run_e2e_tests == 'true' }}
@@ -203,31 +209,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Selenium E2E tests
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright E2E tests
         run: |
           if [ "${{ github.event.inputs.test_flakiness }}" = "true" ]; then
-            echo "Running Selenium tests with flakiness simulation..."
-            npm run test:e2e:selenium:mock
+            echo "Running Playwright tests with flakiness simulation..."
+            npm run test:e2e:playwright:mock
           else
-            echo "Running Selenium tests normally..."
-            npm run test:e2e:selenium
+            echo "Running Playwright tests normally..."
+            npm run test:e2e:playwright
           fi
         env:
           TEST_API_URL: ${{ github.event.inputs.backend_url }}
           ENABLE_FLAKINESS: ${{ github.event.inputs.test_flakiness }}
 
-      - name: Upload Selenium test results
+      - name: Upload Playwright test results
         uses: actions/upload-artifact@v3
         with:
-          name: selenium-e2e-results
+          name: playwright-e2e-results
           path: |
-            ./coverage/selenium-results.json
-            ./screenshots/
+            ./playwright-report/
+            ./test-results/
+            ./coverage/playwright-results.json
 
   analyze-flakiness:
     name: Analyze Test Flakiness
     runs-on: ubuntu-latest
-    needs: [unit-tests-pytest, integration-tests-pytest, api-tests-karate, e2e-tests-selenium]
+    needs: [unit-tests-jest, integration-tests-supertest, api-tests-postman, e2e-tests-playwright]
     if: ${{ github.event.inputs.test_flakiness == 'true' }}
     steps:
       - name: Checkout code
@@ -241,12 +251,12 @@ jobs:
       - name: Analyze flakiness patterns
         run: |
           echo "Analyzing test flakiness patterns..."
-          node scripts/analyze-flakiness.js pipeline3
+          node scripts/analyze-flakiness.js pipeline1
         env:
           TEST_RESULTS_PATH: ./test-results
 
       - name: Upload flakiness report
         uses: actions/upload-artifact@v3
         with:
-          name: flakiness-analysis-pipeline3
+          name: flakiness-analysis-pipeline1
           path: ./flakiness-report.json
