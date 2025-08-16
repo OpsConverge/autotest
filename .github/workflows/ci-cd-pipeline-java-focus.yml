@@ -99,7 +99,7 @@ jobs:
           ENABLE_FLAKINESS: ${{ github.event.inputs.test_flakiness }}
 
       - name: Upload JUnit test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: junit-unit-results
           path: |
@@ -135,7 +135,7 @@ jobs:
           ENABLE_FLAKINESS: ${{ github.event.inputs.test_flakiness }}
 
       - name: Upload Spring Boot test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: springboot-integration-results
           path: |
@@ -171,7 +171,7 @@ jobs:
           ENABLE_FLAKINESS: ${{ github.event.inputs.test_flakiness }}
 
       - name: Upload REST Assured test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: restassured-api-results
           path: |
@@ -210,7 +210,7 @@ jobs:
           ENABLE_FLAKINESS: ${{ github.event.inputs.test_flakiness }}
 
       - name: Upload Cypress test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cypress-e2e-results
           path: |
@@ -228,7 +228,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download all test results
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: ./test-results
 
@@ -240,7 +240,7 @@ jobs:
           TEST_RESULTS_PATH: ./test-results
 
       - name: Upload flakiness report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: flakiness-analysis-pipeline2
           path: ./flakiness-report.json
