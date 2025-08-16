@@ -1,4 +1,4 @@
-name: CI/CD Pipeline 2 - All Test Types
+name: CI/CD Pipeline 2 - Java Focus
 
 on:
   workflow_dispatch:
