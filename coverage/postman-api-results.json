@@ -1,0 +1,157 @@
+{
+  "framework": "postman",
+  "testType": "api",
+  "timestamp": "2025-08-16T05:43:50.634Z",
+  "totalTests": 18,
+  "passed": 14,
+  "failed": 4,
+  "flaky": 0,
+  "executionTime": 17165,
+  "tests": [
+    {
+      "name": "postman_testUserAuthentication_1",
+      "status": "passed",
+      "executionTime": 407,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:51.042Z"
+    },
+    {
+      "name": "postman_testDataValidation_2",
+      "status": "passed",
+      "executionTime": 473,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:51.529Z"
+    },
+    {
+      "name": "postman_testAPIResponse_3",
+      "status": "passed",
+      "executionTime": 1371,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:52.904Z"
+    },
+    {
+      "name": "postman_testDatabaseConnection_4",
+      "status": "passed",
+      "executionTime": 802,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:53.718Z"
+    },
+    {
+      "name": "postman_testUIComponent_5",
+      "status": "passed",
+      "executionTime": 1331,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:55.060Z"
+    },
+    {
+      "name": "postman_testNetworkRequest_6",
+      "status": "passed",
+      "executionTime": 959,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:56.022Z"
+    },
+    {
+      "name": "postman_testFileUpload_7",
+      "status": "passed",
+      "executionTime": 2075,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:58.111Z"
+    },
+    {
+      "name": "postman_testEmailSending_8",
+      "status": "passed",
+      "executionTime": 1123,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:59.244Z"
+    },
+    {
+      "name": "postman_testPaymentProcessing_9",
+      "status": "failed",
+      "executionTime": 788,
+      "flaky": false,
+      "error": "Network timeout after 5000ms",
+      "timestamp": "2025-08-16T05:44:00.043Z"
+    },
+    {
+      "name": "postman_testSearchFunctionality_10",
+      "status": "failed",
+      "executionTime": 516,
+      "flaky": false,
+      "error": "API returned 500 Internal Server Error",
+      "timestamp": "2025-08-16T05:44:00.575Z"
+    },
+    {
+      "name": "postman_testUserRegistration_11",
+      "status": "passed",
+      "executionTime": 569,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:44:01.152Z"
+    },
+    {
+      "name": "postman_testPasswordReset_12",
+      "status": "failed",
+      "executionTime": 591,
+      "flaky": false,
+      "error": "Resource not available",
+      "timestamp": "2025-08-16T05:44:01.745Z"
+    },
+    {
+      "name": "postman_testProfileUpdate_13",
+      "status": "passed",
+      "executionTime": 1728,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:44:03.485Z"
+    },
+    {
+      "name": "postman_testTeamCreation_14",
+      "status": "passed",
+      "executionTime": 374,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:44:03.872Z"
+    },
+    {
+      "name": "postman_testProjectAssignment_15",
+      "status": "failed",
+      "executionTime": 741,
+      "flaky": false,
+      "error": "Resource not available",
+      "timestamp": "2025-08-16T05:44:04.622Z"
+    },
+    {
+      "name": "postman_testReportGeneration_16",
+      "status": "passed",
+      "executionTime": 138,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:44:04.762Z"
+    },
+    {
+      "name": "postman_testDataExport_17",
+      "status": "passed",
+      "executionTime": 1388,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:44:06.161Z"
+    },
+    {
+      "name": "postman_testNotificationSystem_18",
+      "status": "passed",
+      "executionTime": 1626,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:44:07.798Z"
+    }
+  ],
+  "flakinessRate": 0
+}

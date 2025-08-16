@@ -1,0 +1,93 @@
+{
+  "framework": "jest",
+  "testType": "unit",
+  "timestamp": "2025-08-16T05:42:59.246Z",
+  "totalTests": 10,
+  "passed": 7,
+  "failed": 3,
+  "flaky": 0,
+  "executionTime": 9792,
+  "tests": [
+    {
+      "name": "jest_testUserAuthentication_1",
+      "status": "failed",
+      "executionTime": 469,
+      "flaky": false,
+      "error": "Database connection failed",
+      "timestamp": "2025-08-16T05:42:59.723Z"
+    },
+    {
+      "name": "jest_testDataValidation_2",
+      "status": "failed",
+      "executionTime": 410,
+      "flaky": false,
+      "error": "Resource not available",
+      "timestamp": "2025-08-16T05:43:00.145Z"
+    },
+    {
+      "name": "jest_testAPIResponse_3",
+      "status": "passed",
+      "executionTime": 1954,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:02.109Z"
+    },
+    {
+      "name": "jest_testDatabaseConnection_4",
+      "status": "passed",
+      "executionTime": 2097,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:04.221Z"
+    },
+    {
+      "name": "jest_testUIComponent_5",
+      "status": "passed",
+      "executionTime": 175,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:04.406Z"
+    },
+    {
+      "name": "jest_testNetworkRequest_6",
+      "status": "passed",
+      "executionTime": 492,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:04.905Z"
+    },
+    {
+      "name": "jest_testFileUpload_7",
+      "status": "passed",
+      "executionTime": 698,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:05.605Z"
+    },
+    {
+      "name": "jest_testEmailSending_8",
+      "status": "passed",
+      "executionTime": 1806,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:07.421Z"
+    },
+    {
+      "name": "jest_testPaymentProcessing_9",
+      "status": "failed",
+      "executionTime": 750,
+      "flaky": false,
+      "error": "Service unavailable",
+      "timestamp": "2025-08-16T05:43:08.185Z"
+    },
+    {
+      "name": "jest_testSearchFunctionality_10",
+      "status": "passed",
+      "executionTime": 843,
+      "flaky": false,
+      "error": null,
+      "timestamp": "2025-08-16T05:43:09.038Z"
+    }
+  ],
+  "flakinessRate": 0
+}

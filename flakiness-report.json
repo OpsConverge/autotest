@@ -1,0 +1,14 @@
+{
+  "pipeline": "pipeline1",
+  "timestamp": "2025-08-16T05:43:36.198Z",
+  "summary": {
+    "totalTests": 0,
+    "passedTests": 0,
+    "failedTests": 0,
+    "flakyTests": 0,
+    "flakinessRate": 0
+  },
+  "flakyTests": [],
+  "frameworkResults": {},
+  "recommendations": []
+}
